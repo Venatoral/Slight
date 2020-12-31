@@ -10,7 +10,7 @@ from flow.core.experiment import Experiment
 # 路网参数
 ROAD_PARAMS = dict(
     # 车辆进入速度
-    v_enter=10,
+    v_enter=15,
     # 路网长度参数
     inner_length=300,
     long_length=500,
@@ -18,7 +18,7 @@ ROAD_PARAMS = dict(
     # 路网行数
     n_rows=2,
     # 路网列数
-    n_columns=3,
+    n_columns=2,
     # 各个方向车辆数量
     num_cars_left=20,
     num_cars_right=20,
