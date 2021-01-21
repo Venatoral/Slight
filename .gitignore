@@ -1,3 +1,4 @@
 data
 *.exe
 *.tmp
+__pycache__

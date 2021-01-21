@@ -1,11 +1,11 @@
+from flow.envs.traffic_light_grid import TrafficLightGridBenchmarkEnv
+from flow.envs.traffic_light_grid import TrafficLightGridEnv
 from flow.core.params import InFlows, SumoParams
-from flow.core.params import TrafficLightParams, NetParams, InitialConfig
+from flow.core.params import NetParams, InitialConfig
 from flow.core.params import EnvParams, SumoCarFollowingParams, VehicleParams
 from flow.controllers import GridRouter
-from flow.envs.ring.accel import AccelEnv, ADDITIONAL_ENV_PARAMS
 from flow.networks import TrafficLightGridNetwork
 from flow.core.experiment import Experiment
-
 
 # 路网参数
 ROAD_PARAMS = dict(
@@ -89,8 +89,7 @@ vehicles.add(
     ),
     num_vehicles=ROAD_PARAMS['total_cars']
 )
-# 交通灯
-traffic_lights = TrafficLightParams()
+
 # 交叉路口网络参数
 grid_array = {
     "short_length": ROAD_PARAMS['short_length'],
@@ -108,7 +107,8 @@ additional_net_params = {
     'grid_array': grid_array,
     'speed_limit': 35,
     'horizontal_lanes': 1,
-    'vertical_lanes': 1
+    'vertical_lanes': 1,
+    'tl_lights': True
 }
 
 init, net_params = get_flow_params(num_row=ROAD_PARAMS['n_rows'],
@@ -116,26 +116,35 @@ init, net_params = get_flow_params(num_row=ROAD_PARAMS['n_rows'],
                                    additional_net_params=additional_net_params
                                    )
 
+# 训练环境参数
+additional_env_params = {
+        'target_velocity': 50,
+        'switch_time': 3.0,
+        'num_observed': 2,
+        'discrete': False,
+        'tl_type': 'controlled'
+    }
 
 flow_params = dict(
-    exp_tag='grid_inter',
-    env_name=AccelEnv,
+    exp_tag='seq2seq_light_grid',
+    # 目前使用的是BenchmarkEnv，如果用自己写的方法，需要改成TrafficLightGridEnv
+    env_name=TrafficLightGridBenchmarkEnv,
     network=TrafficLightGridNetwork,
     simulator='traci',
     sim=SumoParams(
-        sim_step=0.1,
+        sim_step=1,
         render=True,
         emission_path='data'
     ),
     env=EnvParams(
         horizon=1500,
-        additional_params=ADDITIONAL_ENV_PARAMS,
+        additional_params=additional_env_params,
     ),
     net=net_params,
     veh=vehicles,
-    initial=init,
-    tls=traffic_lights,
+    initial=init
 )
+
 
 if __name__ == "__main__":
     exp = Experiment(flow_params=flow_params)
