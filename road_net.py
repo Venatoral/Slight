@@ -1,4 +1,4 @@
-from flow.envs.traffic_light_grid import TrafficLightGridBenchmarkEnv
+from flow.envs.traffic_light_grid import TrafficLightGridPOEnv
 from flow.envs.traffic_light_grid import TrafficLightGridEnv
 from flow.core.params import InFlows, SumoParams
 from flow.core.params import NetParams, InitialConfig
@@ -121,19 +121,20 @@ additional_env_params = {
         'target_velocity': 50,
         'switch_time': 3.0,
         'num_observed': 2,
-        'discrete': False,
+        # 使用离散值来表示action_space
+        'discrete': True,
         'tl_type': 'controlled'
     }
 
 flow_params = dict(
     exp_tag='seq2seq_light_grid',
     # 目前使用的是BenchmarkEnv，如果用自己写的方法，需要改成TrafficLightGridEnv
-    env_name=TrafficLightGridBenchmarkEnv,
+    env_name=TrafficLightGridPOEnv,
     network=TrafficLightGridNetwork,
     simulator='traci',
     sim=SumoParams(
         sim_step=1,
-        render=True,
+        render=False,
         emission_path='data'
     ),
     env=EnvParams(

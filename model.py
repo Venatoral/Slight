@@ -1,25 +1,16 @@
+from ray.rllib.examples.models.rnn_model import TorchRNNModel
 import torch
 import gym
-from torch import nn
+import numpy as np
+from typing import Dict, List, Tuple
+from torch import dtype, nn, tensor
 from torch.autograd import Variable
 from torch.nn import functional as F
-from torch import optim
-from ray.rllib.models.modelv2 import ModelV2
-from ray.rllib.models.preprocessors import get_preprocessor
-from ray.tune.tune import run_experiments
-from ray.rllib.models.torch.recurrent_net import RecurrentNetwork
 from ray.rllib.models.torch.torch_modelv2 import TorchModelV2
-from ray.rllib.policy.rnn_sequencing import add_time_dimension
-from ray.rllib.policy.sample_batch import SampleBatch
-from ray.rllib.policy.view_requirement import ViewRequirement
-from ray.rllib.utils.annotations import override, DeveloperAPI
-from ray.rllib.utils.framework import try_import_torch
-from ray.rllib.utils.torch_ops import one_hot
 from ray.rllib.utils.typing import ModelConfigDict, TensorType
-run_experiments()
-
+from ray.rllib.models.torch.misc import SlimFC, normc_initializer
 # Encoder in Seq2Seq
-class EncoderRNN(nn.Module):
+class ExampleEncoderRNN(nn.Module):
     def __init__(self, input_size, hidden_size, n_layers=1): ## input_size指one-hot embedding之后的维度
         super(EncoderRNN, self).__init__()  ## hidden_size指的是RNN中使用的hidden state维度
                                  ## n_layers 使用RNN（GRU）层数
@@ -43,7 +34,7 @@ class EncoderRNN(nn.Module):
 
 
  ## attention 机制
-class Attn(nn.Module):  
+class ExampleAttn(nn.Module):  
     def __init__(self, method, hidden_size):
         super(Attn, self).__init__()
         
@@ -90,10 +81,10 @@ class Attn(nn.Module):
 
 
 # Decoder
-class AttnDecoderRNN(nn.Module):
+class ExampleAttnDecoderRNN(nn.Module):
      ## output_size 对应输出size，对应one-hot维度
     def __init__(self, attn_model, hidden_size, output_size, n_layers=1, dropout_p=0.1):
-        super(AttnDecoderRNN, self).__init__()
+        super(Decoder, self).__init__()
         
         # Keep parameters for reference
         self.attn_model = attn_model
@@ -135,11 +126,100 @@ class AttnDecoderRNN(nn.Module):
         # Return final output, hidden state, and attention weights (for visualization)
         return output, context, hidden, attn_weights
 
+# implement by ml
+class Encoder(nn.Module):
+
+    def __init__(self, input_dim, hidden_dim, embed_dim, layers) -> None:
+        super(Encoder, self).__init__()
+        # dimensions
+        self.input_dim = input_dim
+        self.hidden_dim = hidden_dim
+        self.embed_dim = embed_dim
+        self.layers = layers
+        # gru and embeding
+        self.embedding = nn.Embedding(input_dim, embed_dim)
+        self.gru = nn.GRU(embed_dim, hidden_dim, num_layers=layers)
+    
+    def forward(self, src):
+        src = src.long()
+        embedded = self.embedding(src)
+        out, hidden = self.gru(embedded)
+        return out, hidden
+
+
+class Decoder(nn.Module):
+    
+    def __init__(self, output_dim, hidden_dim, embed_dim, layers) -> None:
+        super(Decoder, self).__init__()
+        # dimensions
+        self.output_dim = output_dim
+        self.hidden_dim = hidden_dim
+        self.embed_dim = embed_dim
+        self.layers = layers
+        # gru and embeding
+        self.embedding = nn.Embedding(output_dim, embed_dim)
+        self.gru = nn.GRU(embed_dim, hidden_dim, num_layers=layers)
+        self.out = nn.Linear(hidden_dim, output_dim)
+        self.softmax = nn.LogSoftmax(dim=1)
+
+    def forward(self, inputs, hidden):
+        inputs = inputs.view(1, -1)
+        # inputs = inputs.unsqueeze(0)
+        embedded = nn.functional.relu(self.embedding(inputs))
+        output, hidden = self.gru(embedded, hidden)
+        predict = self.softmax(self.out(output[0]))
+        return predict, hidden
+
 
 class Seq2Seq2Model(TorchModelV2, nn.Module):
     def __init__(self, obs_space: gym.spaces.Space, action_space: gym.spaces.Space, num_outputs: int, model_config: ModelConfigDict, name: str):
-        super().__init__(obs_space, action_space, num_outputs, model_config, name)
+        super(Seq2Seq2Model, self).__init__(obs_space, action_space, num_outputs, model_config, name)
         nn.Module.__init__(self)
-        
-    def forward(self, input_dict: Dict[str, TensorType], state: List[TensorType], seq_lens: TensorType) -> (TensorType, List[TensorType]):
-        return super().forward(input_dict, state, seq_lens)    
+        self.obs_size = obs_space.shape[0]
+        self.action_size = action_space.n
+        self.action_space = action_space
+        self.num_outputs = num_outputs
+        self.encoder = Encoder(self.obs_size, 128, 512, 1)
+        self.decoder = Decoder(self.action_size, 128, 512, 1)
+        # 路口数量
+        self.inter_num = model_config.get('inter_num')
+
+        self._features = None
+        self._value_branch = SlimFC(
+            in_size=num_outputs,
+            out_size=1,
+            initializer=normc_initializer(0.01),
+            activation_fn=None)
+
+    # input_dict (dict) – dictionary of input tensors
+    # including “obs”, “obs_flat”, “prev_action”, 
+    # “prev_reward”, “is_training”, 
+    # “eps_id”, “agent_id”, “infos”, and “t”.
+    def forward(self, input_dict: Dict[str, TensorType], state: List[TensorType], seq_lens: TensorType) -> Tuple[TensorType, List[TensorType]]:
+        obs = input_dict['obs_flat'].float()
+        self._last_batch_size = obs.shape[0]
+        print(f'batch_size: {self._last_batch_size}')
+        # encoder
+        # for i in range(obs.shape[0]):
+        #     _, encoder_hidden = self.encoder(obs)
+        # obs [32(batch_size), 156(obs_space.shape[0])]
+        _, encoder_hidden = self.encoder(obs)
+        # decoder (to fix, why 1, 156, 128 and expected 1, 1, 128)
+        hidden = encoder_hidden[:, -1, :].unsqueeze(1)
+        # to fix
+        outs = torch.zeros((self._last_batch_size, self.action_size))
+        decoder_input = torch.tensor([0])
+        for i in range(self._last_batch_size):
+            decoder_out, hidden = self.decoder(decoder_input, hidden)
+            outs[i] = decoder_out[0]
+            _, topi = decoder_out.topk(1)
+            decoder_input = topi
+        self._features = outs
+        print(f'Shape: {outs.shape}')
+        return outs, state
+
+
+    def value_function(self) -> TensorType:
+        assert self._features is not None, "must call forward() first"
+        value = self._value_branch(self._features).squeeze(1)
+        return value
