@@ -1,14 +1,11 @@
 import ray
+import os
 from ray import tune
 from ray.tune.registry import register_env
-from ray.rllib.examples.env.repeat_after_me_env import RepeatAfterMeEnv
-from ray.rllib.examples.env.repeat_initial_obs_env import RepeatInitialObsEnv
-from ray.rllib.examples.models.rnn_model import TorchRNNModel
 from model import Seq2Seq2Model
 from ray.rllib.models import ModelCatalog
 from flow.utils.registry import make_create_env
 from road_net import ROAD_PARAMS, flow_params
-
 # 路口数量
 INTER_NUM = ROAD_PARAMS['n_rows'] * ROAD_PARAMS['n_columns']
 
@@ -18,7 +15,7 @@ if __name__ == "__main__":
     env = create_env()
     register_env(gym_name, create_env)
     # ray 集群环境
-    ray.init(num_cpus=4)
+    ray.init(num_cpus=os.cpu_count())
     ModelCatalog.register_custom_model(
         "seq2seq", Seq2Seq2Model
         )

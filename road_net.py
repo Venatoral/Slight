@@ -128,7 +128,7 @@ additional_env_params = {
 
 flow_params = dict(
     exp_tag='seq2seq_light_grid',
-    # 目前使用的是BenchmarkEnv，如果用自己写的方法，需要改成TrafficLightGridEnv
+    # 目前使用的是BenchmarkEnv，如果用自己写的方法，需要改成TrafficLightGridPOEnv
     env_name=TrafficLightGridPOEnv,
     network=TrafficLightGridNetwork,
     simulator='traci',
