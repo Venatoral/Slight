@@ -15,7 +15,9 @@ if __name__ == "__main__":
     env = create_env()
     register_env(gym_name, create_env)
     # ray 集群环境
-    ray.init(num_cpus=os.cpu_count())
+    ray.init(
+        num_cpus=os.cpu_count()
+        )
     ModelCatalog.register_custom_model(
         "seq2seq", Seq2Seq2Model
         )
@@ -39,6 +41,7 @@ if __name__ == "__main__":
         },
         "framework": "torch",
     }
-    print(config['model']['custom_model'])
     results = tune.run('PPO', config=config)
     ray.shutdown()
+    print('Training is over!')
+

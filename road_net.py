@@ -75,6 +75,7 @@ def get_flow_params(num_row: int, num_col: int, additional_net_params):
         lanes_distribution=float('inf'),
     )
     net = NetParams(inflows=inflow, additional_params=additional_net_params)
+    #fix net = NetParams(inflows=inflow, additional_params=additional_net_params)
     return initial, net
 
 
@@ -120,7 +121,7 @@ init, net_params = get_flow_params(num_row=ROAD_PARAMS['n_rows'],
 additional_env_params = {
         'target_velocity': 50,
         'switch_time': 3.0,
-        'num_observed': 2,
+        'num_observed': 4,
         # 使用离散值来表示action_space
         'discrete': True,
         'tl_type': 'controlled'
@@ -135,7 +136,8 @@ flow_params = dict(
     sim=SumoParams(
         sim_step=1,
         render=False,
-        emission_path='data'
+        emission_path='data',
+        restart_instance=True
     ),
     env=EnvParams(
         horizon=1500,

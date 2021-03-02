@@ -151,7 +151,6 @@ class Decoder(nn.Module):
     
     def __init__(self, output_dim, hidden_dim, embed_dim, layers) -> None:
         super(Decoder, self).__init__()
-        # dimensions
         self.output_dim = output_dim
         self.hidden_dim = hidden_dim
         self.embed_dim = embed_dim
@@ -179,11 +178,13 @@ class Seq2Seq2Model(TorchModelV2, nn.Module):
         self.action_size = action_space.n
         self.action_space = action_space
         self.num_outputs = num_outputs
+        #demension 
         self.encoder = Encoder(self.obs_size, 128, 512, 1)
         self.decoder = Decoder(self.action_size, 128, 512, 1)
         # 路口数量
         self.inter_num = model_config.get('inter_num')
-
+        # 使用GPU加速
+        self.device = torch.device('cuda' if torch.cuda.is_available() else 'cpu')
         self._features = None
         self._value_branch = SlimFC(
             in_size=num_outputs,
@@ -196,7 +197,7 @@ class Seq2Seq2Model(TorchModelV2, nn.Module):
     # “prev_reward”, “is_training”, 
     # “eps_id”, “agent_id”, “infos”, and “t”.
     def forward(self, input_dict: Dict[str, TensorType], state: List[TensorType], seq_lens: TensorType) -> Tuple[TensorType, List[TensorType]]:
-        obs = input_dict['obs_flat'].float()
+        obs = input_dict['obs_flat'].float().to(self.device)
         self._last_batch_size = obs.shape[0]
         print(f'batch_size: {self._last_batch_size}')
         # encoder
@@ -215,7 +216,6 @@ class Seq2Seq2Model(TorchModelV2, nn.Module):
             _, topi = decoder_out.topk(1)
             decoder_input = topi
         self._features = outs
-        print(f'Shape: {outs.shape}')
         return outs, state
 
 
