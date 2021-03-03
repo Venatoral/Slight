@@ -2,7 +2,8 @@ import ray
 import os
 from ray import tune
 from ray.tune.registry import register_env
-from model import Seq2Seq2Model
+from models.attn_model import AttentionModel
+from models.model import Seq2Seq2Model
 from ray.rllib.models import ModelCatalog
 from flow.utils.registry import make_create_env
 from road_net import ROAD_PARAMS, flow_params
@@ -19,7 +20,10 @@ if __name__ == "__main__":
         num_cpus=os.cpu_count()
         )
     ModelCatalog.register_custom_model(
-        "seq2seq", Seq2Seq2Model
+        "seq2seq", Seq2Seq2Model,
+        )
+    ModelCatalog.register_custom_model(
+        "attentionModel", AttentionModel,
         )
     # register_env("RepeatAfterMeEnv", lambda c: RepeatAfterMeEnv(c))
     # register_env("RepeatInitialObsEnv", lambda _: RepeatInitialObsEnv())
@@ -34,14 +38,15 @@ if __name__ == "__main__":
         "num_sgd_iter": 5,
         "vf_loss_coeff": 1e-5,
         "model": {
-            "custom_model": "seq2seq",
+            "custom_model": "attentionModel",
             "custom_model_config":{
                 'inter_num': INTER_NUM
             }
         },
         "framework": "torch",
     }
-    results = tune.run('PPO', config=config)
+    results = tune.run('PPO', config=config, stop={"training_iteration": 1})
     ray.shutdown()
     print('Training is over!')
+    print('Result is {}'.format(results))
 
