@@ -107,7 +107,7 @@ class AttentionModel(TorchModelV2, nn.Module):
         # hidden: (num_layers * num_directions, batch, hidden_size)
         encoder_outputs = torch.zeros(self.decoder.max_length, self.encoder.hidden_size)
         encoder_hidden = torch.zeros((1, self._last_batch_size, self.hidden_size))
-        # obs -> (seq_len, batch_size, input_size)
+        # obs -> (seq_len(交通灯数量), batch_size, input_size)
         obs = obs.reshape((self.inter_num, self._last_batch_size, -1))
         for i in range(obs.shape[0]):
             encoder_output, encoder_hidden = self.encoder(obs[i], encoder_hidden)
