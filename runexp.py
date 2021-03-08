@@ -45,7 +45,7 @@ if __name__ == "__main__":
         },
         "framework": "torch",
     }
-    # 修改 training_iteration 改变训练回合数s 
+    # 修改 training_iteration 改变训练回合数
     results = tune.run('PPO', config=config, stop={"training_iteration": 1})
     ray.shutdown()
     print('Training is over!')
