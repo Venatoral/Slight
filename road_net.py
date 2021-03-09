@@ -7,6 +7,7 @@ from flow.controllers import GridRouter
 from flow.networks import TrafficLightGridNetwork
 from flow.core.experiment import Experiment
 
+
 # 路网参数
 ROAD_PARAMS = dict(
     # 车辆进入速度
@@ -129,7 +130,7 @@ additional_env_params = {
 
 flow_params = dict(
     exp_tag='seq2seq_light_grid',
-    # 目前使用的是BenchmarkEnv，如果用自己写的方法，需要改成TrafficLightGridPOEnv
+    # 如果用自己写的方法，需要改成TrafficLightGridPOEnv
     env_name=TrafficLightGridPOEnv,
     network=TrafficLightGridNetwork,
     simulator='traci',
@@ -140,7 +141,7 @@ flow_params = dict(
         restart_instance=True
     ),
     env=EnvParams(
-        horizon=1500,
+        horizon=1000,
         additional_params=additional_env_params,
     ),
     net=net_params,

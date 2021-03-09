@@ -9,6 +9,8 @@ from torch.nn import functional as F
 from ray.rllib.models.torch.torch_modelv2 import TorchModelV2
 from ray.rllib.utils.typing import ModelConfigDict, TensorType
 from ray.rllib.models.torch.misc import SlimFC, normc_initializer
+from torch.nn.modules.activation import Tanh
+from torch.nn.modules.linear import Linear
 
 MAX_LENGTH = 512
 #imitate the pytorch attention tutorial
@@ -85,13 +87,15 @@ class AttentionModel(TorchModelV2, nn.Module):
         # 路口数量
         self.inter_num = model_config['custom_model_config'].get('inter_num')
         self.device = torch.device('cuda' if torch.cuda.is_available() else 'cpu')
-        self._features = None
         # value function
-        self._value_branch = SlimFC(
-            in_size=num_outputs,
-            out_size=1,
-            initializer=normc_initializer(0.01),
-            activation_fn=None)
+        self._value_branch = nn.Sequential(
+            nn.Linear(self.obs_size, 128),
+            nn.Tanh(),
+            nn.Linear(128, 128),
+            nn.Tanh(),
+            nn.Linear(128, 1)
+        )
+        self._value_out = None
 
     '''
     input_dict (dict) – dictionary of input tensors, 
@@ -101,7 +105,11 @@ class AttentionModel(TorchModelV2, nn.Module):
     @return [BATCH, num_outputs], and the new RNN state.
     '''
     def forward(self, input_dict: Dict[str, TensorType], state: List[TensorType], seq_lens: TensorType) -> Tuple[TensorType, List[TensorType]]:
-        obs: torch.Tensor = input_dict['obs_flat'].float()
+        obs: torch.Tensor = input_dict['obs'].float()
+        print(obs.shape)
+        # 记录value
+        self._value_out = self._value_branch(obs)
+        # 记录 batch_size
         self._last_batch_size = obs.shape[0]
         # encoder
         # hidden: (num_layers * num_directions, batch, hidden_size)
@@ -121,10 +129,8 @@ class AttentionModel(TorchModelV2, nn.Module):
             outs[i] = decoder_out[0]
             _, topi = decoder_out.topk(1)
             decoder_input = topi
-        self._features = outs
         return outs, state
 
     def value_function(self) -> TensorType:
-        assert self._features is not None, "must call forward() first"
-        value = self._value_branch(self._features).squeeze(1)
-        return value
+        assert self._value_out is not None, "must call forward() first"
+        return self._value_out.squeeze(dim=1)
