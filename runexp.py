@@ -1,8 +1,9 @@
 import ray
 import os
+import torch
 from ray import tune
 from ray.tune.registry import register_env
-from models.attn_model import AttentionModel
+from models.attn_model import AttentionSeqModel
 from ray.rllib.models import ModelCatalog
 from flow.utils.registry import make_create_env
 from road_net import ROAD_PARAMS, flow_params
@@ -17,11 +18,14 @@ if __name__ == "__main__":
     env = create_env()
     register_env(gym_name, create_env)
     # ray 集群环境
+    cpu_num = os.cpu_count()
+    gpu_num = 1 if torch.cuda.is_available() else 0
     ray.init(
-        num_cpus=os.cpu_count()
+        num_cpus=cpu_num,
+        num_gpus=gpu_num
         )
     ModelCatalog.register_custom_model(
-        "attentionModel", AttentionModel,
+        "attentionModel", AttentionSeqModel,
         )
     # register_env("RepeatAfterMeEnv", lambda c: RepeatAfterMeEnv(c))
     # register_env("RepeatInitialObsEnv", lambda _: RepeatInitialObsEnv())
@@ -35,11 +39,12 @@ if __name__ == "__main__":
         "entropy_coeff": 0.001,
         "num_sgd_iter": 5,
         "vf_loss_coeff": 1e-5,
+        'num_gpus': gpu_num,
         "model": {
             "custom_model": "attentionModel",
             "custom_model_config":{
                 'inter_num': INTER_NUM
-            }
+            },
         },
         "framework": "torch",
     }
