@@ -3,7 +3,7 @@ import os
 import torch
 from ray import tune
 from ray.tune.registry import register_env
-from models.attn_model import AttentionSeqModel
+from models.model import AttentionSeqModel
 from ray.rllib.models import ModelCatalog
 from flow.utils.registry import make_create_env
 from road_net import ROAD_PARAMS, flow_params
@@ -49,7 +49,7 @@ if __name__ == "__main__":
         "framework": "torch",
     }
     # 修改 training_iteration 改变训练回合数
-    results = tune.run('PPO', config=config, stop={"training_iteration": 1})
+    results = tune.run('PPO', config=config, stop={"training_iteration": 10·})
     ray.shutdown()
     print('Training is over!')
     print('Result is {}'.format(results))

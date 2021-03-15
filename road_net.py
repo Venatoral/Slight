@@ -1,5 +1,6 @@
 from flow.envs.traffic_light_grid import TrafficLightGridPOEnv
 from flow.envs.traffic_light_grid import TrafficLightGridEnv
+from our_env import SeqTraffiLightEnv
 from flow.core.params import InFlows, SumoParams
 from flow.core.params import NetParams, InitialConfig
 from flow.core.params import EnvParams, SumoCarFollowingParams, VehicleParams
@@ -125,13 +126,17 @@ additional_env_params = {
         'num_observed': 4,
         # 使用离散值来表示action_space
         'discrete': True,
-        'tl_type': 'controlled'
+        'tl_type': 'controlled',
+        # number of nearest lights to observe, defaults to 4
+        'num_local_lights': 4,
+        # number of nearest edges to observe, defaults to 4
+        'num_local_edges': 4,
     }
 
 flow_params = dict(
     exp_tag='seq2seq_light_grid',
     # 如果用自己写的方法，需要改成TrafficLightGridPOEnv
-    env_name=TrafficLightGridPOEnv,
+    env_name=SeqTraffiLightEnv,
     network=TrafficLightGridNetwork,
     simulator='traci',
     sim=SumoParams(
