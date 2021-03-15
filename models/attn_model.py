@@ -49,7 +49,7 @@ class DecoderRNNAtt(nn.Module):
 
 
     def forward(self, input, hidden, encoder_outputs):
-        embedded = self.embedding(input).to(device)
+        embedded = F.tanh(self.embedding(input).to(device))
         embedded = self.dropout(embedded)
         embedded = embedded.unsqueeze(0)
         # embedded: (batch, hidden_size) -> (seq_len, batch, hidden_size)
@@ -74,20 +74,16 @@ class AttentionSeqModel(TorchModelV2, nn.Module):
         nn.Module.__init__(self)
         self.obs_size = obs_space.shape[0]
         self.action_size = num_outputs
-        print('nigger:', self.action_size)
-        self.num_outputs = num_outputs
         # 此处设置 Encoder 和 Decoder 的 hidden_size
         self.hidden_size = 128
         self.encoder = EncoderRNNAtt(self.obs_size, self.hidden_size)
         self.decoder = DecoderRNNAtt(self.action_size, self.hidden_size)
-        # 路口数量
-        self.inter_num = model_config['custom_model_config'].get('inter_num')
         # value function
         self._value_branch = nn.Sequential(
             nn.Linear(self.obs_size, 128),
-            nn.Tanh(),
+            nn.ReLU(),
             nn.Linear(128, 128),
-            nn.Tanh(),
+            nn.ReLU(),
             nn.Linear(128, 1)
         )
         self._value_out = None
