@@ -1,16 +1,10 @@
 import torch
 import gym
-import numpy as np
 from typing import Dict, List, Tuple
-from torch import device, dtype, nn, tensor, transpose
-from torch.autograd import Variable
+from torch import device, nn
 from torch.nn import functional as F
-# from ray.rllib.examples.attention_net
 from ray.rllib.models.torch.torch_modelv2 import TorchModelV2
 from ray.rllib.utils.typing import ModelConfigDict, TensorType
-from ray.rllib.models.torch.misc import SlimFC, normc_initializer
-from torch.nn.modules.activation import Tanh
-from torch.nn.modules.linear import Linear
 
 
 device = 'cuda' if torch.cuda.is_available() else 'cpu'
@@ -27,6 +21,7 @@ class EncoderRNNAtt(nn.Module):
         num_directions = 1
         '''
         self.gru = nn.GRU(hidden_size, hidden_size)
+
 
     def forward(self, input, hidden):
         # input: (batch, state_size) -> embedded: (batch, hidden_size)
@@ -51,6 +46,7 @@ class DecoderRNNAtt(nn.Module):
         self.dropout = nn.Dropout(self.dropout_p)
         self.gru = nn.GRU(self.hidden_size, self.hidden_size, dropout=dropout_p)
         self.out = nn.Linear(self.hidden_size, self.output_size)
+
 
     def forward(self, input, hidden, encoder_outputs):
         embedded = self.embedding(input).to(device)
@@ -124,6 +120,7 @@ class AttentionSeqModel(TorchModelV2, nn.Module):
             decoder_out, decoder_hidden, decoder_attn = self.decoder(decoder_input, decoder_hidden, encoder_outputs)
             decoder_input = decoder_out
         return decoder_out, state
+
 
     def value_function(self) -> TensorType:
         assert self._value_out is not None, "must call forward() first"
