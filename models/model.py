@@ -5,11 +5,14 @@ from torch import device, nn
 from torch.nn import functional as F
 from ray.rllib.models.torch.torch_modelv2 import TorchModelV2
 from ray.rllib.utils.typing import ModelConfigDict, TensorType
+from matplotlib import pyplot as plt
 
 
 device = 'cuda' if torch.cuda.is_available() else 'cpu'
 MAX_LENGTH = 512
-#imitate the pytorch attention tutorial
+# imitate the pytorch attention tutorial
+
+
 class EncoderRNNAtt(nn.Module):
     def __init__(self, input_size, hidden_size):
         super(EncoderRNNAtt, self).__init__()
@@ -21,7 +24,6 @@ class EncoderRNNAtt(nn.Module):
         num_directions = 1
         '''
         self.gru = nn.GRU(hidden_size, hidden_size)
-
 
     def forward(self, input, hidden):
         # input: (batch, state_size) -> embedded: (batch, hidden_size)
@@ -35,7 +37,7 @@ class EncoderRNNAtt(nn.Module):
 
 class DecoderRNNAtt(nn.Module):
     def __init__(self, output_size, hidden_size, dropout_p=0.1, max_length=MAX_LENGTH):
-        super(DecoderRNNAtt,self).__init__()
+        super(DecoderRNNAtt, self).__init__()
         self.hidden_size = hidden_size
         self.output_size = output_size
         self.dropout_p = dropout_p
@@ -44,7 +46,8 @@ class DecoderRNNAtt(nn.Module):
         self.attn = nn.Linear(self.hidden_size * 2, self.max_length)
         self.attn_combine = nn.Linear(self.hidden_size * 2, self.hidden_size)
         self.dropout = nn.Dropout(self.dropout_p)
-        self.gru = nn.GRU(self.hidden_size, self.hidden_size, dropout=dropout_p)
+        self.gru = nn.GRU(self.hidden_size, self.hidden_size,
+                          dropout=dropout_p)
         self.out = nn.Linear(self.hidden_size, self.output_size)
 
 
@@ -54,7 +57,9 @@ class DecoderRNNAtt(nn.Module):
         embedded = embedded.unsqueeze(0)
         # embedded: (batch, hidden_size) -> (seq_len, batch, hidden_size)
         attn_weights = F.softmax(
-            self.attn(torch.cat((embedded[0], hidden[0]), 1)), dim=1)
+            self.attn(torch.cat((embedded[0], hidden[0]), dim=1)),
+            dim=1
+        )
         attn_applied = torch.bmm(attn_weights.unsqueeze(0),
                                  encoder_outputs.unsqueeze(0))
 
@@ -70,23 +75,24 @@ class DecoderRNNAtt(nn.Module):
 
 class AttentionSeqModel(TorchModelV2, nn.Module):
     def __init__(self, obs_space: gym.spaces.Space, action_space: gym.spaces.Space, num_outputs: int, model_config: ModelConfigDict, name: str):
-        super(AttentionSeqModel, self).__init__(obs_space, action_space, num_outputs, model_config, name)
-        nn.Module.__init__(self)
+        super(AttentionSeqModel, self).__init__(
+            obs_space, action_space, num_outputs, model_config, name)
+        nn.Module.__init__(self) 
         self.obs_size = obs_space.shape[1]
         self.num_light = obs_space.shape[0]
-        self.action_size = int(num_outputs / self.num_light)
+        self.action_size = num_outputs
         # 此处设置 Encoder 和 Decoder 的 hidden_size
         self.hidden_size = 128
         self.encoder = EncoderRNNAtt(self.obs_size, self.hidden_size)
-        self.decoder = DecoderRNNAtt(self.action_size, self.hidden_size)
+        self.decoder = DecoderRNNAtt(self.action_size, self.hidden_size, max_length=self.num_light)
         # 路口数量
         self.inter_num = model_config['custom_model_config'].get('inter_num')
         # value function
         self._value_branch = nn.Sequential(
             nn.Linear(self.obs_size * self.num_light, 128),
-            nn.Tanh(),
+            nn.ReLU(),
             nn.Linear(128, 128),
-            nn.Tanh(),
+            nn.ReLU(),
             nn.Linear(128, 1)
         )
         self._value_out = None
@@ -98,6 +104,7 @@ class AttentionSeqModel(TorchModelV2, nn.Module):
     
     @return [BATCH, num_outputs], and the new RNN state.
     '''
+
     def forward(self, input_dict: Dict[str, TensorType], state: List[TensorType], seq_lens: TensorType) -> Tuple[TensorType, List[TensorType]]:
         obs: torch.Tensor = input_dict['obs'].float().to(device)
         # 记录value
@@ -107,25 +114,25 @@ class AttentionSeqModel(TorchModelV2, nn.Module):
         # num of lights
         # encoder
         # hidden: (num_layers * num_directions, batch, hidden_size)
-        encoder_outputs = torch.zeros(self.decoder.max_length, self.encoder.hidden_size).to(device)
-        encoder_hidden = torch.zeros((1, self._last_batch_size, self.hidden_size)).to(device)
-        # loop for num_light times
+        encoder_outputs = torch.zeros(
+            self.decoder.max_length, self.encoder.hidden_size).to(device)
+        encoder_hidden = torch.zeros(
+            (1, self._last_batch_size, self.hidden_size)).to(device)
+        # 将路口状态一个个输入encoder得到最终的hidden作为Context
         for i in range(self.num_light):
-            encoder_output, encoder_hidden = self.encoder(obs[:, i, :], encoder_hidden)
+            encoder_output, encoder_hidden = self.encoder(
+                obs[:, i, :], encoder_hidden)
             encoder_outputs[i] = encoder_output[0, 0]
-        # 直接将encoder的隐藏层作为decoder的隐藏层 
+        # 直接将encoder的隐藏层作为decoder的隐藏层
         decoder_hidden = encoder_hidden
-        outs = torch.zeros(size=(self.num_light, self._last_batch_size, self.action_size)).to(device)
-        decoder_input = torch.zeros(size=(self._last_batch_size, self.action_size)).to(device)
+        decoder_input = torch.zeros(
+            size=(self._last_batch_size, self.action_size)).to(device)
         for i in range(self.num_light):
-            decoder_out, decoder_hidden, decoder_attn = self.decoder(decoder_input, decoder_hidden, encoder_outputs)
+            decoder_out, decoder_hidden, decoder_attn = self.decoder(
+                decoder_input, decoder_hidden, encoder_outputs)
             # record the actions of this intersection
-            outs[i] = decoder_out
-            decoder_input = decoder_out
-        # outs: [self.num_light , batch, actions] -> [batch, actions]
-        outs = outs.reshape((self._last_batch_size, -1))
-        return outs, state
-
+            decoder_input = decoder_out.detach()
+        return decoder_out, state
 
     def value_function(self) -> TensorType:
         assert self._value_out is not None, "must call forward() first"

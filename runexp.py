@@ -36,8 +36,8 @@ if __name__ == "__main__":
             "repeat_delay": 2,
         },
         "gamma": 0.99,
-        "entropy_coeff": 0.001,
-        "num_sgd_iter": 5,
+        "entropy_coeff": 1e-3,
+        "num_sgd_iter": 10,
         "vf_loss_coeff": 1e-5,
         'num_gpus': gpu_num,
         "model": {
@@ -49,7 +49,14 @@ if __name__ == "__main__":
         "framework": "torch",
     }
     # 修改 training_iteration 改变训练回合数
-    results = tune.run('PPO', config=config, stop={"training_iteration": 1})
+    results = tune.run(
+        'PPO',
+        num_samples=1,
+        local_dir='./results', 
+        config=config, 
+        stop={"training_iteration": 2},
+        resume=False,
+        )
     ray.shutdown()
     print('Training is over!')
     print('Result is {}'.format(results))
