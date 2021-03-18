@@ -143,7 +143,8 @@ flow_params = dict(
         sim_step=1,
         render=False,
         emission_path='data',
-        restart_instance=True
+        restart_instance=True,
+        print_warnings=False
     ),
     env=EnvParams(
         horizon=1000,
