@@ -5,7 +5,6 @@ from torch import device, nn
 from torch.nn import functional as F
 from ray.rllib.models.torch.torch_modelv2 import TorchModelV2
 from ray.rllib.utils.typing import ModelConfigDict, TensorType
-from matplotlib import pyplot as plt
 
 
 device = 'cuda' if torch.cuda.is_available() else 'cpu'

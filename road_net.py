@@ -147,7 +147,7 @@ flow_params = dict(
         print_warnings=False
     ),
     env=EnvParams(
-        horizon=1000,
+        horizon=500,
         additional_params=additional_env_params,
     ),
     net=net_params,
