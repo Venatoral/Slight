@@ -7,6 +7,7 @@ from models.model import AttentionSeqModel
 from ray.rllib.models import ModelCatalog
 from flow.utils.registry import make_create_env
 from road_net import ROAD_PARAMS, flow_params
+from matplotlib import pyplot as plt
 
 
 # 路口数量
@@ -37,14 +38,12 @@ if __name__ == "__main__":
         },
         "gamma": 0.99,
         "entropy_coeff": 1e-3,
+       # 'vf_clip_param': 200.0,
         "num_sgd_iter": 10,
         "vf_loss_coeff": 1e-5,
         'num_gpus': gpu_num,
         "model": {
             "custom_model": "attentionModel",
-            "custom_model_config":{
-                'inter_num': INTER_NUM
-            },
         },
         "framework": "torch",
     }
@@ -54,10 +53,10 @@ if __name__ == "__main__":
         num_samples=1,
         local_dir='./results', 
         config=config, 
-        stop={"training_iteration": 2},
+        stop={"training_iteration": 1},
         resume=False,
         )
+    
     ray.shutdown()
     print('Training is over!')
     print('Result is {}'.format(results))
-

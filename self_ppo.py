@@ -124,7 +124,7 @@ class AttentionSeqModel(nn.Module):
             logits, decoder_hidden, decoder_attn = self.decoder(
                 decoder_input, decoder_hidden, encoder_outputs)
             # record the actions of this intersection
-            decoder_input = logits.detach()
+            decoder_input = logits
 
         return logits
 
@@ -232,7 +232,7 @@ class PPO():
             surr2 = torch.clamp(ratios, 1 - self.eps_clip,
                                 1 + self.eps_clip) * advantages
             loss = -torch.min(surr1, surr2) + 0.5 * \
-                self.MseLoss(state_values, rewards) - 0.01*dist_entropy
+                self.MseLoss(state_values, rewards) - 0.01 * dist_entropy
             # update
             self.optimizer.zero_grad()
             loss.mean().backward()
@@ -248,7 +248,7 @@ if __name__ == '__main__':
     # PPO agent
     agent = PPO(env)
     rewards = []
-    num_epochs = 100
+    num_epochs = 2000
     batch_size = 2000
     timestep = 0
     memory = ExperiencePool()

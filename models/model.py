@@ -6,12 +6,11 @@ from torch.nn import functional as F
 from ray.rllib.models.torch.torch_modelv2 import TorchModelV2
 from ray.rllib.utils.typing import ModelConfigDict, TensorType
 
-
 device = 'cuda' if torch.cuda.is_available() else 'cpu'
 MAX_LENGTH = 512
 # imitate the pytorch attention tutorial
 
-
+attentions = []
 class EncoderRNNAtt(nn.Module):
     def __init__(self, input_size, hidden_size):
         super(EncoderRNNAtt, self).__init__()
@@ -48,32 +47,36 @@ class DecoderRNNAtt(nn.Module):
         self.gru = nn.GRU(self.hidden_size, self.hidden_size,
                           dropout=dropout_p)
         self.out = nn.Linear(self.hidden_size, self.output_size)
+        self.fc = nn.Linear(self.hidden_size, self.hidden_size)
 
-
-    def forward(self, input, hidden, encoder_outputs):
+    def forward(self, input, hidden, encoder_outputs, use_attn=True):
         embedded = self.embedding(input).to(device)
         embedded = self.dropout(embedded)
-        embedded = embedded.unsqueeze(0)
         # embedded: (batch, hidden_size) -> (seq_len, batch, hidden_size)
-        attn_weights = F.softmax(
-            self.attn(torch.cat((embedded[0], hidden[0]), dim=1)),
-            dim=1
-        )
-        attn_applied = torch.bmm(attn_weights.unsqueeze(0),
-                                 encoder_outputs.unsqueeze(0))
+        embedded = embedded.unsqueeze(0)
+        # use attention
+        if use_attn:
+            attn_weights = F.softmax(
+                self.attn(torch.cat((embedded[0], hidden[0]), dim=1)),
+                dim=1
+            )
+            attn_applied = torch.bmm(attn_weights.unsqueeze(0),
+                                    encoder_outputs.unsqueeze(0))
 
-        output = torch.cat((embedded[0], attn_applied[0]), 1)
-        output = self.attn_combine(output).unsqueeze(0)
+            output = torch.cat((embedded[0], attn_applied[0]), 1)
+            output = self.attn_combine(output).unsqueeze(0)
 
-        output = F.relu(output)
+        output = torch.tanh(output)
         output, hidden = self.gru(output, hidden)
 
-        output = F.log_softmax(self.out(output[0]), dim=1)
+        # output = F.log_softmax(self.out(output[0]), dim=1)
+        output = torch.tanh(self.out(output[0]))
         return output, hidden, attn_weights
 
 
 class AttentionSeqModel(TorchModelV2, nn.Module):
     def __init__(self, obs_space: gym.spaces.Space, action_space: gym.spaces.Space, num_outputs: int, model_config: ModelConfigDict, name: str):
+        print('__init__: AttentionModel')
         super(AttentionSeqModel, self).__init__(
             obs_space, action_space, num_outputs, model_config, name)
         nn.Module.__init__(self) 
@@ -84,8 +87,6 @@ class AttentionSeqModel(TorchModelV2, nn.Module):
         self.hidden_size = 128
         self.encoder = EncoderRNNAtt(self.obs_size, self.hidden_size)
         self.decoder = DecoderRNNAtt(self.action_size, self.hidden_size, max_length=self.num_light)
-        # 路口数量
-        self.inter_num = model_config['custom_model_config'].get('inter_num')
         # value function
         self._value_branch = nn.Sequential(
             nn.Linear(self.obs_size * self.num_light, 128),
@@ -125,7 +126,8 @@ class AttentionSeqModel(TorchModelV2, nn.Module):
         # 直接将encoder的隐藏层作为decoder的隐藏层
         decoder_hidden = encoder_hidden
         decoder_input = torch.zeros(
-            size=(self._last_batch_size, self.action_size)).to(device)
+            size=(self._last_batch_size, self.action_size)).to(device) 
+        
         for i in range(self.num_light):
             decoder_out, decoder_hidden, decoder_attn = self.decoder(
                 decoder_input, decoder_hidden, encoder_outputs)

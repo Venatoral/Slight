@@ -18,9 +18,9 @@ ROAD_PARAMS = dict(
     long_length=500,
     short_length=300,
     # 路网行数
-    n_rows=2,
+    n_rows=6,
     # 路网列数
-    n_columns=2,
+    n_columns=6,
     # 各个方向车辆数量
     num_cars_left=20,
     num_cars_right=20,
@@ -125,7 +125,7 @@ additional_env_params = {
         'switch_time': 3.0,
         'num_observed': 4,
         # 使用离散值来表示action_space
-        'discrete': True,
+        'discrete': False,
         'tl_type': 'controlled',
         # number of nearest lights to observe, defaults to 4
         'num_local_lights': 4,
@@ -147,7 +147,7 @@ flow_params = dict(
         print_warnings=False
     ),
     env=EnvParams(
-        horizon=500,
+        horizon=1000,
         additional_params=additional_env_params,
     ),
     net=net_params,
