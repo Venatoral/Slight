@@ -20,7 +20,7 @@ if __name__ == "__main__":
     register_env(gym_name, create_env)
     # ray 集群环境
     cpu_num = os.cpu_count()
-    gpu_num = 1 if torch.cuda.is_available() else 0
+    gpu_num = torch.cuda.device_count()
     ray.init(
         num_cpus=cpu_num,
         num_gpus=gpu_num

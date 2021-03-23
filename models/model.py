@@ -86,7 +86,7 @@ class AttentionSeqModel(TorchModelV2, nn.Module):
         # 此处设置 Encoder 和 Decoder 的 hidden_size
         self.hidden_size = 128
         self.encoder = EncoderRNNAtt(self.obs_size, self.hidden_size)
-        self.decoder = DecoderRNNAtt(self.action_size, self.hidden_size, max_length=self.num_light)
+        self.decoder = DecoderRNNAtt(self.action_size, self.hidden_size, max_length=self.num_light, dropout_p=0)
         # value function
         self._value_branch = nn.Sequential(
             nn.Linear(self.obs_size * self.num_light, 128),
