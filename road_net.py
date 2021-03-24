@@ -37,7 +37,6 @@ ROAD_PARAMS['total_cars'] = (
        ROAD_PARAMS['num_cars_bot']) * ROAD_PARAMS['n_rows']
 )
 
-
 '''
 根据num_row和num_col构造inflow的edges
 '''
@@ -66,9 +65,9 @@ def get_flow_params(num_row: int, num_col: int, additional_net_params):
         inflow.add(
             veh_type='human',
             edge=edges[i],
-            probability=0.25,
             depart_lane='free',
             depart_speed=20,
+            vehs_per_hour=800,
         )
     initial = InitialConfig(
         shuffle=True,
@@ -77,7 +76,6 @@ def get_flow_params(num_row: int, num_col: int, additional_net_params):
         lanes_distribution=float('inf'),
     )
     net = NetParams(inflows=inflow, additional_params=additional_net_params)
-    #fix net = NetParams(inflows=inflow, additional_params=additional_net_params)
     return initial, net
 
 
@@ -90,7 +88,8 @@ vehicles.add(
         min_gap=2.5,
         decel=7.5
     ),
-    num_vehicles=ROAD_PARAMS['total_cars']
+    # num_vehicles=ROAD_PARAMS['total_cars']
+    num_vehicles=0
 )
 
 # 交叉路口网络参数
@@ -141,7 +140,7 @@ flow_params = dict(
     simulator='traci',
     sim=SumoParams(
         sim_step=1,
-        render=False,
+        render=True,
         emission_path='data',
         restart_instance=True,
         print_warnings=False
