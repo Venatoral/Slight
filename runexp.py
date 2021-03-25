@@ -1,6 +1,7 @@
 import ray
 import os
 import torch
+import nvgpu
 from ray import tune
 from ray.tune.registry import register_env
 from models.model import AttentionSeqModel
@@ -20,7 +21,7 @@ if __name__ == "__main__":
     register_env(gym_name, create_env)
     # ray 集群环境
     cpu_num = os.cpu_count()
-    gpu_num = torch.cuda.device_count()
+    gpu_num =torch.cuda.device_count()
     ray.init(
         num_cpus=cpu_num,
         num_gpus=gpu_num
@@ -52,7 +53,7 @@ if __name__ == "__main__":
         'PPO',
         num_samples=1,
         local_dir='./results', 
-        config=config, 
+        config=config,
         stop={"training_iteration": 1},
         resume=False,
         )

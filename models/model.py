@@ -5,6 +5,11 @@ from torch import device, nn
 from torch.nn import functional as F
 from ray.rllib.models.torch.torch_modelv2 import TorchModelV2
 from ray.rllib.utils.typing import ModelConfigDict, TensorType
+from matplotlib import pyplot as plt
+import seaborn as sns
+import pandas as pd
+import pickle
+
 
 device = 'cuda' if torch.cuda.is_available() else 'cpu'
 MAX_LENGTH = 512
@@ -82,7 +87,7 @@ class AttentionSeqModel(TorchModelV2, nn.Module):
         nn.Module.__init__(self) 
         self.obs_size = obs_space.shape[1]
         self.num_light = obs_space.shape[0]
-        self.action_size = num_outputs
+        self.action_size = 2
         # 此处设置 Encoder 和 Decoder 的 hidden_size
         self.hidden_size = 128
         self.encoder = EncoderRNNAtt(self.obs_size, self.hidden_size)
@@ -95,6 +100,7 @@ class AttentionSeqModel(TorchModelV2, nn.Module):
             nn.ReLU(),
             nn.Linear(128, 1)
         )
+        self.time_step = 0
         self._value_out = None
 
     '''
@@ -106,6 +112,9 @@ class AttentionSeqModel(TorchModelV2, nn.Module):
     '''
 
     def forward(self, input_dict: Dict[str, TensorType], state: List[TensorType], seq_lens: TensorType) -> Tuple[TensorType, List[TensorType]]:
+        # record time steps
+        self.time_step += 1
+        # obs
         obs: torch.Tensor = input_dict['obs'].float().to(device)
         # 记录value
         self._value_out = self._value_branch(input_dict['obs_flat'])
@@ -127,13 +136,27 @@ class AttentionSeqModel(TorchModelV2, nn.Module):
         decoder_hidden = encoder_hidden
         decoder_input = torch.zeros(
             size=(self._last_batch_size, self.action_size)).to(device) 
-        
+        outs = torch.zeros(
+            size=(self._last_batch_size, self.num_light, self.action_size)).to(device)
+        # attn recorder
+        attns = []
         for i in range(self.num_light):
             decoder_out, decoder_hidden, decoder_attn = self.decoder(
                 decoder_input, decoder_hidden, encoder_outputs)
             # record the actions of this intersection
+            attns.append(decoder_attn[0].detach().cpu().numpy().tolist())
             decoder_input = decoder_out.detach()
-        return decoder_out, state
+            outs[:, i, :] = decoder_out
+        # draw matrix
+        if (self.time_step + 1) % 500 == 0:
+            print('Save heatMap!')
+            df = pd.DataFrame(attns)
+            print(df)
+            sns.heatmap(df)
+            plt.savefig('./pic/heatmap.png')
+
+        outs = outs.reshape(shape=(outs.shape[0], -1))
+        return outs, state
 
     def value_function(self) -> TensorType:
         assert self._value_out is not None, "must call forward() first"
