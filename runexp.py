@@ -1,7 +1,6 @@
 import ray
 import os
 import torch
-import nvgpu
 from ray import tune
 from ray.tune.registry import register_env
 from models.model import AttentionSeqModel
