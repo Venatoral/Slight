@@ -1,7 +1,7 @@
 import torch
 import gym
 from typing import Dict, List, Tuple
-from torch import device, nn
+from torch import device, mode, nn
 from torch.nn import functional as F
 from ray.rllib.models.torch.torch_modelv2 import TorchModelV2
 from ray.rllib.utils.typing import ModelConfigDict, TensorType
@@ -11,7 +11,6 @@ import pandas as pd
 
 
 device = 'cuda' if torch.cuda.is_available() else 'cpu'
-MAX_LENGTH = 512
 # imitate the pytorch attention tutorial
 
 attentions = []
@@ -38,7 +37,7 @@ class EncoderRNNAtt(nn.Module):
 
 
 class DecoderRNNAtt(nn.Module):
-    def __init__(self, output_size, hidden_size, dropout_p=0.1, max_length=MAX_LENGTH):
+    def __init__(self, output_size, hidden_size, max_length, dropout_p=0.1):
         super(DecoderRNNAtt, self).__init__()
         self.hidden_size = hidden_size
         self.output_size = output_size
@@ -64,6 +63,10 @@ class DecoderRNNAtt(nn.Module):
                 self.attn(torch.cat((embedded[0], hidden[0]), dim=1)),
                 dim=1
             )
+            '''
+            TODO：使用 _get_relative_node 来获得相邻节点，设置 adj 作为 mask
+            attn_applied = attn_applied * adj
+            '''
             attn_applied = torch.bmm(attn_weights.unsqueeze(0),
                                     encoder_outputs.unsqueeze(0))
 
@@ -83,7 +86,8 @@ class AttentionSeqModel(TorchModelV2, nn.Module):
         print('__init__: AttentionModel')
         super(AttentionSeqModel, self).__init__(
             obs_space, action_space, num_outputs, model_config, name)
-        nn.Module.__init__(self) 
+        nn.Module.__init__(self)
+        self.name = name
         self.obs_size = obs_space.shape[1]
         self.num_light = obs_space.shape[0]
         self.action_size = 2
@@ -148,11 +152,8 @@ class AttentionSeqModel(TorchModelV2, nn.Module):
             outs[:, i, :] = decoder_out
         # draw matrix
         if (self.time_step + 1) % 500 == 0:
-            print('Save heatMap!')
             df = pd.DataFrame(attns)
-            print(df)
-            sns.heatmap(df)
-            plt.savefig('./pic/heatmap.png')
+            df.to_csv('./attentions_{}'.format(self.name), mode='w')
 
         outs = outs.reshape(shape=(outs.shape[0], -1))
         return outs, state
