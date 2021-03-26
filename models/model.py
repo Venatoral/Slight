@@ -163,8 +163,9 @@ class AttentionSeqModel(TorchModelV2, nn.Module):
         if (self.time_step + 1) % 500 == 0:
             print('Save Attns!')
             df = pd.DataFrame(attns)
+            print(attns)
             try:
-                df.to_csv('attention_{}'.format(self.name))
+                df.to_csv('attention_{}.csv'.format(self.name))
             except:
                 pass
 
