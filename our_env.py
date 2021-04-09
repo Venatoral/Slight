@@ -148,6 +148,14 @@ class SeqTraffiLightEnv(TrafficLightGridPOEnv):
                  velocity_avg[local_edge_numbers],
                  direction[local_id_nums], currently_yellow[local_id_nums]
                  ]))
+                # 
             obs.append(observation)
-
+        # 每个交叉口
+        # speeds num_observed个车速 / max(Speed)
+        # dist_to_intersec 车到路口距离
+        # edge lane
+        # density 拥堵程度 （车身长度 * 车数 / 路长）
+        # velocity_avg 平均速度
+        # direction 路灯phase（N->S, W->E)
+        # currently_yellow 是否处于黄灯状态
         return obs

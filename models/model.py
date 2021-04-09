@@ -72,7 +72,8 @@ class DecoderRNNAtt(nn.Module):
 
             output = torch.cat((embedded[0], attn_applied[0]), 1)
             output = self.attn_combine(output).unsqueeze(0)
-
+        else:
+            output = self.fc(embedded)
         output = torch.tanh(output)
         output, hidden = self.gru(output, hidden)
 
@@ -154,7 +155,6 @@ class AttentionSeqModel(TorchModelV2, nn.Module):
         if (self.time_step + 1) % 500 == 0:
             df = pd.DataFrame(attns)
             df.to_csv('./attentions_{}'.format(self.name), mode='w')
-
         outs = outs.reshape(shape=(outs.shape[0], -1))
         return outs, state
 
