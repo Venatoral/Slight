@@ -33,9 +33,9 @@ def train():
     ModelCatalog.register_custom_model(
         "attentionModel", AttentionSeqModel,
         )
-    # register_env("RepeatAfterMeEnv", lambda c: RepeatAfterMeEnv(c))
-    # register_env("RepeatInitialObsEnv", lambda _: RepeatInitialObsEnv())
-
+    
+    # generate adj matrix
+    adj_matrix = env.get_adj_matrix()
     config = {
         "env": gym_name,
         "env_config": {
@@ -43,12 +43,15 @@ def train():
         },
         "gamma": 0.99,
         "entropy_coeff": 1e-3,
-       # 'vf_clip_param': 200.0,
+        'vf_clip_param': 20.0,
         "num_sgd_iter": 10,
         "vf_loss_coeff": 1e-5,
         'num_gpus': gpu_num,
         "model": {
             "custom_model": "attentionModel",
+            "custom_model_config": {
+                'adj_mask': adj_matrix
+            }
         },
         "framework": "torch",
     }

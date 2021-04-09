@@ -4,7 +4,7 @@ from flow.envs.traffic_light_grid import TrafficLightGridPOEnv
 from gym.spaces import Box, Discrete
 import numpy as np
 
-
+# center_[ID_IDX]
 ID_IDX = 1
 
 class SeqTraffiLightEnv(TrafficLightGridPOEnv):
@@ -18,6 +18,7 @@ class SeqTraffiLightEnv(TrafficLightGridPOEnv):
         # number of nearest edges to observe, defaults to 4
         self.num_local_edges = env_params.additional_params.get(
             "num_local_edges", 4)
+
 
     @property
     def observation_space(self):
@@ -40,6 +41,7 @@ class SeqTraffiLightEnv(TrafficLightGridPOEnv):
         return tl_box
 
 
+    # get state of the environment
     def get_state(self):
         """Observations for each traffic light agent.
 
@@ -132,7 +134,8 @@ class SeqTraffiLightEnv(TrafficLightGridPOEnv):
         obs = []
         # obs -> [num_light, observation]
         node_to_edges = self.network.node_mapping
-        for rl_id in self.k.traffic_light.get_ids():
+        tl_ids = ['center{}'.format(i) for i in range(self.num_traffic_lights)]
+        for rl_id in tl_ids:
             rl_id_num = int(rl_id.split("center")[ID_IDX])
             local_edges = node_to_edges[rl_id_num][1]
             local_edge_numbers = [self.k.network.get_edge_list().index(e)
@@ -159,3 +162,24 @@ class SeqTraffiLightEnv(TrafficLightGridPOEnv):
         # direction 路灯phase（N->S, W->E)
         # currently_yellow 是否处于黄灯状态
         return obs
+
+
+    # get the adj matrix of the traffic lights
+    def get_adj_matrix(self):
+        adj_matrix = np.identity(self.num_traffic_lights, dtype=np.float)
+        directions = ['top', 'bottom', 'left', 'right']
+        tl_ids = ['center{}'.format(i) for i in range(self.num_traffic_lights)]
+        # set neightbothood as '1'
+        for rl_id in tl_ids:
+            rl_id_num = int(rl_id.split("center")[ID_IDX])
+            local_id_nums = []
+            # look up its neightbors around the light
+            for direction in directions:
+                node = self._get_relative_node(rl_id, direction)
+                # if exist, then append
+                if node != -1:
+                    local_id_nums.append(node)
+            # set adj_matrix as 1.0
+            print('{} : {}'.format(rl_id, local_id_nums))
+            adj_matrix[rl_id_num][local_id_nums] = 1.0
+        return adj_matrix

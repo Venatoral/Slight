@@ -43,16 +43,17 @@ class DecoderRNNAtt(nn.Module):
         self.output_size = output_size
         self.dropout_p = dropout_p
         self.max_length = max_length
+        # layers
         self.embedding = nn.Linear(self.output_size, self.hidden_size)
         self.attn = nn.Linear(self.hidden_size * 2, self.max_length)
         self.attn_combine = nn.Linear(self.hidden_size * 2, self.hidden_size)
         self.dropout = nn.Dropout(self.dropout_p)
-        self.gru = nn.GRU(self.hidden_size, self.hidden_size,
-                          dropout=dropout_p)
+        self.gru = nn.GRU(self.hidden_size, self.hidden_size, dropout=dropout_p)
         self.out = nn.Linear(self.hidden_size, self.output_size)
         self.fc = nn.Linear(self.hidden_size, self.hidden_size)
 
-    def forward(self, input, hidden, encoder_outputs, use_attn=True):
+
+    def forward(self, input, hidden, encoder_outputs, attn_mask, use_attn=True):
         embedded = self.embedding(input).to(device)
         embedded = self.dropout(embedded)
         # embedded: (batch, hidden_size) -> (seq_len, batch, hidden_size)
@@ -63,14 +64,11 @@ class DecoderRNNAtt(nn.Module):
                 self.attn(torch.cat((embedded[0], hidden[0]), dim=1)),
                 dim=1
             )
-            '''
-            TODO：使用 _get_relative_node 来获得相邻节点，设置 adj 作为 mask
-            attn_applied = attn_applied * adj
-            '''
-            attn_applied = torch.bmm(attn_weights.unsqueeze(0),
-                                    encoder_outputs.unsqueeze(0))
-
-            output = torch.cat((embedded[0], attn_applied[0]), 1)
+            # use attention mask to concern specialy abount neightbors
+            attn_weights = (attn_weights * attn_mask)
+            attn_applied = torch.bmm(attn_weights.unsqueeze(1),
+                                    encoder_outputs).squeeze(1)
+            output = torch.cat((embedded[0], attn_applied), 1)
             output = self.attn_combine(output).unsqueeze(0)
         else:
             output = self.fc(embedded)
@@ -88,10 +86,16 @@ class AttentionSeqModel(TorchModelV2, nn.Module):
         super(AttentionSeqModel, self).__init__(
             obs_space, action_space, num_outputs, model_config, name)
         nn.Module.__init__(self)
-        self.name = name
+        # the adj matrix for attention usage
+        self.attention_mask = torch.nn.Parameter(
+            torch.from_numpy(model_config['custom_model_config']['adj_mask']).float(),
+            requires_grad=True,
+            )
+        # dimensions
         self.obs_size = obs_space.shape[1]
         self.num_light = obs_space.shape[0]
         self.action_size = 2
+        self.name = name
         # 此处设置 Encoder 和 Decoder 的 hidden_size
         self.hidden_size = 128
         self.encoder = EncoderRNNAtt(self.obs_size, self.hidden_size)
@@ -128,14 +132,14 @@ class AttentionSeqModel(TorchModelV2, nn.Module):
         # encoder
         # hidden: (num_layers * num_directions, batch, hidden_size)
         encoder_outputs = torch.zeros(
-            self.decoder.max_length, self.encoder.hidden_size).to(device)
+            self._last_batch_size, self.decoder.max_length, self.encoder.hidden_size).to(device)
         encoder_hidden = torch.zeros(
             (1, self._last_batch_size, self.hidden_size)).to(device)
         # 将路口状态一个个输入encoder得到最终的hidden作为Context
         for i in range(self.num_light):
             encoder_output, encoder_hidden = self.encoder(
                 obs[:, i, :], encoder_hidden)
-            encoder_outputs[i] = encoder_output[0, 0]
+            encoder_outputs[:, i, :] = encoder_output[0, :, :]
         # 直接将encoder的隐藏层作为decoder的隐藏层
         decoder_hidden = encoder_hidden
         decoder_input = torch.zeros(
@@ -146,15 +150,21 @@ class AttentionSeqModel(TorchModelV2, nn.Module):
         attns = []
         for i in range(self.num_light):
             decoder_out, decoder_hidden, decoder_attn = self.decoder(
-                decoder_input, decoder_hidden, encoder_outputs)
+                decoder_input, decoder_hidden, encoder_outputs, self.attention_mask[i]
+                )
             # record the actions of this intersection
             attns.append(decoder_attn[0].detach().cpu().numpy().tolist())
             decoder_input = decoder_out.detach()
             outs[:, i, :] = decoder_out
         # draw matrix
         if (self.time_step + 1) % 500 == 0:
+            print('Save Attns!')
             df = pd.DataFrame(attns)
-            df.to_csv('./attentions_{}'.format(self.name), mode='w')
+            try:
+                df.to_csv('attention_{}.csv'.format(self.name))
+            except:
+                pass
+
         outs = outs.reshape(shape=(outs.shape[0], -1))
         return outs, state
 
