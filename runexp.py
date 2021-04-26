@@ -50,7 +50,6 @@ def train():
         "num_sgd_iter": 10,
         "vf_loss_coeff": 1e-5,
         'num_gpus': gpu_num,
-        'num_workers':1,
         "model": {
             "custom_model": "tcnModel",
             "custom_model_config": {
