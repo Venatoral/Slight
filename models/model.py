@@ -140,6 +140,7 @@ class AttentionSeqModel(TorchModelV2, nn.Module):
             Union[List[Tensor],Tensor]: List of or scalar tensor for the
                 customized loss(es) for this model.
         """
+        return policy_loss
         print("[2]hiddens final shape: ", self.hiddens.shape)
 
         if self.I4R == "MaxDivideMin":
@@ -150,17 +151,11 @@ class AttentionSeqModel(TorchModelV2, nn.Module):
             norm=reguModel(self.hiddens, self.reg_coef)
         else:
             norm=0
-        print("*"*50)
-        print("policy_loss: ", policy_loss)
-
         norm=norm.to(device)
         print("norm: ", norm)
-
         policy_loss[0]=policy_loss[0]+norm
 
-        print("policy_loss2: ", policy_loss)
-        print("*" * 50)
-        # self.hiddens = None
+        self.hiddens = None
         return policy_loss
 
     def forward(self, input_dict: Dict[str, TensorType], state: List[TensorType], seq_lens: TensorType) -> Tuple[
@@ -186,22 +181,22 @@ class AttentionSeqModel(TorchModelV2, nn.Module):
             encoder_output, encoder_hidden, embedded = self.encoder(
                 obs[:, i, :], encoder_hidden)
             encoder_outputs[:, i, :] = encoder_output[0, :, :]
-            if hidden is None:
-                hidden=embedded.detach()
-                hidden=hidden.unsqueeze(0)
-                # print("hidden start shape: {}".format(hidden.shape))
-            else:
-                embedded=embedded.unsqueeze(0)
-                hidden=torch.cat((hidden, embedded.detach()), 1)
+            # if hidden is None:
+            #     hidden=embedded.detach()
+            #     hidden=hidden.unsqueeze(0)
+            #     # print("hidden start shape: {}".format(hidden.shape))
+            # else:
+            #     embedded=embedded.unsqueeze(0)
+            #     hidden=torch.cat((hidden, embedded.detach()), 1)
                 # print("hidden after shape: {}".format(hidden.shape))
         # print("*" * 30)
         #hidden [1, 36*128]
-        if self.hiddens is None:
-            self.hiddens=hidden.detach()
-    #        print("[0]hiddens shape: ", self.hiddens.shape)
-            # print("hiddens start shape: ", self.hiddens.shape)
-        else:
-            self.hiddens=torch.cat([self.hiddens, hidden.detach()])
+    #     if self.hiddens is None:
+    #         self.hiddens=hidden.detach()
+    # #        print("[0]hiddens shape: ", self.hiddens.shape)
+    #         # print("hiddens start shape: ", self.hiddens.shape)
+    #     else:
+    #         self.hiddens=torch.cat([self.hiddens, hidden.detach()])
     #        print("[1]hiddens shape: ", self.hiddens.shape)
             # print("hiddens after shape: ", self.hiddens.shape)
         #hiddens shape torch.Size([2, 4608])
