@@ -105,8 +105,6 @@ def ppo_surrogate_loss(
         total_loss = reduce_mean_valid(-surrogate_loss +
                                        policy.kl_coeff * action_kl -
                                        policy.entropy_coeff * curr_entropy)
-    print("$"*50)
-    print("total loss:", total_loss)
 
     # Store stats in policy for stats_fn.
     policy._total_loss = total_loss
@@ -272,7 +270,7 @@ def setup_mixins(policy: Policy, obs_space: gym.spaces.Space,
 
 # Build a child class of `TorchPolicy`, given the custom functions defined
 # above.
-PPOTorchPolicy = build_torch_policy(
+MyPolicy = build_torch_policy(
     name="PPOTorchPolicy",
     get_default_config=lambda: ray.rllib.agents.ppo.ppo.DEFAULT_CONFIG,
     loss_fn=ppo_surrogate_loss,

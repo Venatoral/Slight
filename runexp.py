@@ -6,7 +6,8 @@ from ray.tune.registry import register_env
 from models.model import AttentionSeqModel
 from models.tcn import TCNModel
 from ray.rllib.agents.trainer_template import build_trainer
-from ray.rllib.agents.ppo import PPOTorchPolicy, DEFAULT_CONFIG
+from policy import MyPolicy
+from ray.rllib.agents.ppo import DEFAULT_CONFIG
 from ray.rllib.models import ModelCatalog
 from flow.utils.registry import make_create_env
 from road_net import ROAD_PARAMS, flow_params
@@ -59,7 +60,7 @@ def train():
         "framework": "torch",
     }
 
-    policy = PPOTorchPolicy
+    policy = MyPolicy
     trainer = build_trainer(name='PPOPlus', default_config=DEFAULT_CONFIG, default_policy=policy)
     # 修改 training_iteration 改变训练回合数
     results = tune.run(
