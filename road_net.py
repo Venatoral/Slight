@@ -1,6 +1,4 @@
-from flow.envs.traffic_light_grid import TrafficLightGridPOEnv
-from flow.envs.traffic_light_grid import TrafficLightGridEnv
-from our_env import SeqTraffiLightEnv
+from our_env import SeqTrafficLightEnv
 from flow.core.params import InFlows, SumoParams
 from flow.core.params import NetParams, InitialConfig
 from flow.core.params import EnvParams, SumoCarFollowingParams, VehicleParams
@@ -68,6 +66,7 @@ def get_flow_params(num_row: int, num_col: int, additional_net_params):
             depart_lane='free',
             depart_speed=20,
             vehs_per_hour=800,
+            # probability=0.2,
         )
     initial = InitialConfig(
         shuffle=True,
@@ -120,9 +119,9 @@ init, net_params = get_flow_params(num_row=ROAD_PARAMS['n_rows'],
 
 # 训练环境参数
 additional_env_params = {
-        'target_velocity': 50,
+        'target_velocity': 35,
         'switch_time': 3.0,
-        'num_observed': 4,
+        'num_observed': 10,
         # 使用离散值来表示action_space
         'discrete': False,
         'tl_type': 'controlled',
@@ -135,11 +134,11 @@ additional_env_params = {
 flow_params = dict(
     exp_tag='seq2seq_light_grid',
     # 如果用自己写的方法，需要改成TrafficLightGridPOEnv
-    env_name=SeqTraffiLightEnv,
+    env_name=SeqTrafficLightEnv,
     network=TrafficLightGridNetwork,
     simulator='traci',
     sim=SumoParams(
-        sim_step=1,
+        sim_step=1.0,
         render=False,
         emission_path='data',
         restart_instance=True,
@@ -148,6 +147,7 @@ flow_params = dict(
     env=EnvParams(
         horizon=1000,
         additional_params=additional_env_params,
+        # evaluate=True
     ),
     net=net_params,
     veh=vehicles,

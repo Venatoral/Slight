@@ -1,13 +1,13 @@
-from typing import List, overload
-from flow.envs.multiagent.traffic_light_grid import MultiTrafficLightGridPOEnv
 from flow.envs.traffic_light_grid import TrafficLightGridPOEnv
+from flow.core import rewards
 from gym.spaces import Box, Discrete
 import numpy as np
 
 # center_[ID_IDX]
 ID_IDX = 1
 
-class SeqTraffiLightEnv(TrafficLightGridPOEnv):
+
+class SeqTrafficLightEnv(TrafficLightGridPOEnv):
 
     def __init__(self, env_params, sim_params, network, simulator):
         super().__init__(env_params, sim_params, network, simulator=simulator)
@@ -18,8 +18,8 @@ class SeqTraffiLightEnv(TrafficLightGridPOEnv):
         # number of nearest edges to observe, defaults to 4
         self.num_local_edges = env_params.additional_params.get(
             "num_local_edges", 4)
-
-
+    
+    
     @property
     def observation_space(self):
         """State space that is partially observed.
@@ -39,7 +39,6 @@ class SeqTraffiLightEnv(TrafficLightGridPOEnv):
             ),
             dtype=np.float32)
         return tl_box
-
 
     # get state of the environment
     def get_state(self):
@@ -155,17 +154,16 @@ class SeqTraffiLightEnv(TrafficLightGridPOEnv):
 
         return obs
 
-
-    # get the adj matrix of the traffic lights
+    # get the adj_matrix
     def get_adj_matrix(self):
         adj_matrix = np.identity(self.num_traffic_lights, dtype=np.float)
         directions = ['top', 'bottom', 'left', 'right']
         tl_ids = ['center{}'.format(i) for i in range(self.num_traffic_lights)]
-        # set neightbothood as '1'
+        # set neighborhood as '1'
         for rl_id in tl_ids:
             rl_id_num = int(rl_id.split("center")[ID_IDX])
             local_id_nums = []
-            # look up its neightbors around the light
+            # look up its neighborhood around the light
             for direction in directions:
                 node = self._get_relative_node(rl_id, direction)
                 # if exist, then append
@@ -175,3 +173,45 @@ class SeqTraffiLightEnv(TrafficLightGridPOEnv):
             print('{} : {}'.format(rl_id, local_id_nums))
             adj_matrix[rl_id_num][local_id_nums] = 1.0
         return adj_matrix
+
+    def compute_reward(self, rl_actions, **kwargs):
+        """See class definition."""
+        # Male Implemented
+        # max or mean
+        def max_queue_length(env):
+            # now add in the density and average velocity on the edges
+            density = []
+            for edge in env.k.network.get_edge_list():
+                ids = env.k.vehicle.get_ids_by_edge(edge)
+                if len(ids) > 0:
+                    vehicle_length = 5
+                    # density += [vehicle_length * len(ids)]
+                    density += [vehicle_length * len(ids) / env.k.network.edge_length(edge)]
+                else:
+                    density += [0]
+            return np.max(density)
+
+
+        def queue_length(env):
+            # now add in the density and average velocity on the edges
+            density = []
+            for edge in env.k.network.get_edge_list():
+                ids = env.k.vehicle.get_ids_by_edge(edge)
+                if len(ids) > 0:
+                    vehicle_length = 5
+                    # density += [vehicle_length * len(ids)]
+                    density += [vehicle_length * len(ids) / env.k.network.edge_length(edge)]
+                else:
+                    density += [0]
+            return np.mean(density)
+
+        if self.env_params.evaluate:
+            return - rewards.min_delay_unscaled(self)
+        else:
+            # penalize_near_standstill ??
+            max_speed = max([self.k.vehicle.get_speed(id) for id in self.k.vehicle.get_ids()])
+            r = rewards.average_velocity(self) - rewards.min_delay_unscaled(self) - max_queue_length(self) \
+                + rewards.penalize_near_standstill(self, gain=0.15)
+            # return (- rewards.min_delay_unscaled(self) +
+            #         rewards.penalize_standstill(self, gain=0.2))
+            return r
