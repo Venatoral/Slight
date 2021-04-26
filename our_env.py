@@ -209,9 +209,9 @@ class SeqTrafficLightEnv(TrafficLightGridPOEnv):
             return - rewards.min_delay_unscaled(self)
         else:
             # penalize_near_standstill ??
-            max_speed = max([self.k.vehicle.get_speed(id) for id in self.k.vehicle.get_ids()])
-            r = rewards.average_velocity(self) - rewards.min_delay_unscaled(self) - max_queue_length(self) \
-                + rewards.penalize_near_standstill(self, gain=0.15)
-            # return (- rewards.min_delay_unscaled(self) +
-            #         rewards.penalize_standstill(self, gain=0.2))
-            return r
+            # max_speed = max([self.k.vehicle.get_speed(id) for id in self.k.vehicle.get_ids()])
+            # r = rewards.average_velocity(self) - rewards.min_delay_unscaled(self) - max_queue_length(self) \
+            #     + rewards.penalize_near_standstill(self, gain=0.15)
+            return (- rewards.min_delay_unscaled(self) +
+                    rewards.penalize_standstill(self, gain=0.2))
+            # return r
