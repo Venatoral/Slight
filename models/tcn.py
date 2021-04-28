@@ -61,6 +61,10 @@ class TCNModel(TorchModelV2, nn.Module):
         self.num_tl = obs_space.shape[0]
         self.input_size = obs_space.shape[1]
         self.output_size = num_outputs // self.num_tl
+        
+        self.I4R = "MaxDivideMin"
+        self.reg_coef = 0.01
+        self.hiddens = None
         # set TCN network
         layers = []
         

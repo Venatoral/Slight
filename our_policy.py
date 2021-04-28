@@ -22,11 +22,15 @@ from ray.rllib.utils.framework import try_import_torch
 from ray.rllib.utils.torch_ops import convert_to_torch_tensor, \
     explained_variance, sequence_mask
 from ray.rllib.utils.typing import TensorType, TrainerConfigDict
-
+import torch
+from models.rugularization import MaxDivideMin
+from models.rugularization import MaxMinusMin
+from ray.rllib.agents.ppo.ppo_torch_policy import PPOTorchPolicy
+from ray.rllib.agents.ppo import PPOTrainer
 torch, nn = try_import_torch()
 
 logger = logging.getLogger(__name__)
-
+device = 'cuda' if torch.cuda.is_available() else 'cpu'
 
 def ppo_surrogate_loss(
         policy: Policy, model: ModelV2,
@@ -105,7 +109,25 @@ def ppo_surrogate_loss(
         total_loss = reduce_mean_valid(-surrogate_loss +
                                        policy.kl_coeff * action_kl -
                                        policy.entropy_coeff * curr_entropy)
+    print("hiddens[0] final shape: ", model.hiddens[0].shape)
+    if model.I4R == "MaxDivideMin":
+        reguModel = MaxDivideMin.apply
+        norm = reguModel(model.hiddens[0], model.reg_coef)
+    elif model.I4R == "MaxMinusMin":
+        reguModel = MaxMinusMin.apply
+        norm = reguModel(model.hiddens[0], model.reg_coef)
+    else:
+        norm = 0
+    print("*" * 50)
+    norm = norm.to(device)
+    print("norm: ", norm)
+    print("total loss:", total_loss)
+    total_loss = total_loss + norm
 
+    model.hiddens = None
+
+    print("total final loss:", total_loss)
+    print("$"*50)
     # Store stats in policy for stats_fn.
     policy._total_loss = total_loss
     policy._mean_policy_loss = mean_policy_loss
@@ -270,8 +292,8 @@ def setup_mixins(policy: Policy, obs_space: gym.spaces.Space,
 
 # Build a child class of `TorchPolicy`, given the custom functions defined
 # above.
-MyPolicy = build_torch_policy(
-    name="PPOTorchPolicy",
+OurPolicy = build_torch_policy(
+    name="MyPPOTorchPolicy",
     get_default_config=lambda: ray.rllib.agents.ppo.ppo.DEFAULT_CONFIG,
     loss_fn=ppo_surrogate_loss,
     stats_fn=kl_and_loss_stats,
