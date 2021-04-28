@@ -70,9 +70,9 @@ def train():
         config=config,
         stop={"training_iteration": 1},
         resume=False,
-        # checkpoint_at_end=True,
-        # checkpoint_freq=5,
-        # keep_checkpoints_num=10,
+        checkpoint_at_end=True,
+        checkpoint_freq=5,
+        keep_checkpoints_num=10,
         )
     ray.shutdown()
     print('Training is over!')
