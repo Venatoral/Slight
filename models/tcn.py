@@ -51,24 +51,6 @@ class TemporalBlock(nn.Module):
         return self.tanh(out + res)
 
 
-class TemporalConvNet(nn.Module):
-    def __init__(self, num_inputs, num_channels, kernel_size=2, dropout=0.2):
-        super(TemporalConvNet, self).__init__()
-        layers = []
-        num_levels = len(num_channels)
-        for i in range(num_levels):
-            dilation_size = 2 ** i
-            in_channels = num_inputs if i == 0 else num_channels[i-1]
-            out_channels = num_channels[i]
-            layers += [TemporalBlock(in_channels, out_channels, kernel_size, stride=1, dilation=dilation_size,
-                                     padding=(kernel_size-1) * dilation_size, dropout=dropout)]
-
-        self.network = nn.Sequential(*layers)
-
-    def forward(self, x):
-        return self.network(x)
-
-
 class TCNModel(TorchModelV2, nn.Module):
     def __init__(self, obs_space: gym.spaces.Space, action_space: gym.spaces.Space, num_outputs: int,
                  model_config: ModelConfigDict, name: str):
@@ -109,9 +91,14 @@ class TCNModel(TorchModelV2, nn.Module):
     def forward(self, input_dict, state, seq_lens):
         self._value_out = self.ciritc(input_dict['obs_flat'])
         obs = input_dict['obs'].transpose(1, 2)
-        logits = self.net(obs)
-        logits = logits.reshape(shape=(logits.shape[0], - 1))
-        return logits, state
+        prev = obs
+        for i in range(len(self.net)):
+            out = self.net[i](prev)
+            prev = out
+            if i == len(self.net) - 2:
+                self.hiddens = out
+        out = out.reshape(shape=(out.shape[0], - 1))
+        return out, state
 
 
     def value_function(self):

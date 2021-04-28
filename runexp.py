@@ -53,6 +53,7 @@ def train():
         "model": {
             "custom_model": "tcnModel",
             "custom_model_config": {
+                'adj_mask':adj_matrix,
                 'kernel_size': 3
             }
         },
