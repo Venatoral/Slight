@@ -94,7 +94,7 @@ class TCNModel(TorchModelV2, nn.Module):
             layers.append(
                 TemporalBlock(
                     in_channel, out_channel, kernel_size, 
-                    stride=1, dilation=dilation_size, padding=(kernel_size - 1) * dilation_size)
+                    stride=1, dilation=dilation_size, padding=dilation_size*2)
                 )
         # TCN
         self.net = nn.Sequential(*layers)
@@ -116,6 +116,7 @@ class TCNModel(TorchModelV2, nn.Module):
             prev = out
             if i == len(self.net) - 2:
                 self.hiddens = out
+        out = out.transpose(1, 2)
         out = out.reshape(shape=(out.shape[0], - 1))
         return out, state
 
