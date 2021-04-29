@@ -3,7 +3,7 @@ import math
 import torch
 from torch.autograd import Function
 
-
+device = 'cuda' if torch.cuda.is_available() else 'cpu'
 class MaxDivideMin(Function):
 
     @staticmethod
@@ -26,7 +26,7 @@ class MaxDivideMin(Function):
         else:
             u, s, v = torch.svd(input_rep, some=False)
             number = s[0] / s[-1]
-            number=number.to('cuda:0')
+            number=number.to(device)
             return number
             # return torch.sum(torch.zeros(1))
 
@@ -41,7 +41,7 @@ class MaxDivideMin(Function):
         grad_min = u[:, -1].view(-1,1).mm(v.t()[-1, :].view(1, -1))
         # calculate grad_input
         grad_input = min_sigma.expand_as(grad_max) * grad_max - max_sigma.expand_as(grad_min) * grad_min
-        grad_input = (1/(min_sigma * min_sigma)).expand_as(grad_input) * grad_input.to('cuda:0')
+        grad_input = (1/(min_sigma * min_sigma)).expand_as(grad_input) * grad_input.to(device)
         # coef
         grad_input = coef.expand_as(grad_input) * grad_input
         # return u.mm(v.t()), None, None, None, None
@@ -69,7 +69,7 @@ class MaxMinusMin(Function):
             return number
         else:
             u, s, v = torch.svd(input_rep, some=False)
-            number = (s[0] - s[-1]).to('cuda:0')
+            number = (s[0] - s[-1]).to(device)
             return number
             # for fast
             # return torch.sum(torch.zeros(1))
@@ -82,8 +82,8 @@ class MaxMinusMin(Function):
         grad_min = u[:, -1].view(-1,1).mm(v.t()[-1, :].view(1, -1))
         # calculate grad_input
         grad_input = grad_max - grad_min
-        # coef=coef.to('cuda:0')
-        grad_input=grad_input.to('cuda:0')
+        # coef=coef.to(device)
+        grad_input=grad_input.to(device)
         print("coef: ", coef)
         # coef
         grad_input = coef.expand_as(grad_input) * grad_input

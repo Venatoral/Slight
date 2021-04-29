@@ -21,20 +21,32 @@ class Chomp1d(nn.Module):
 class TemporalBlock(nn.Module):
     def __init__(self, n_inputs, n_outputs, kernel_size, stride, dilation, padding, dropout=0.2):
         super(TemporalBlock, self).__init__()
+        # ConvNet1
         self.conv1 = weight_norm(nn.Conv1d(n_inputs, n_outputs, kernel_size,
                                            stride=stride, padding=padding, dilation=dilation))
         self.chomp1 = Chomp1d(padding)
         self.tanh1 = nn.Tanh()
         self.dropout1 = nn.Dropout(dropout)
-
+        # ConvNet2
         self.conv2 = weight_norm(nn.Conv1d(n_outputs, n_outputs, kernel_size,
                                            stride=stride, padding=padding, dilation=dilation))
         self.chomp2 = Chomp1d(padding)
         self.tanh2 = nn.Tanh()
         self.dropout2 = nn.Dropout(dropout)
 
-        self.net = nn.Sequential(self.conv1, self.chomp1, self.tanh1, self.dropout1,
-                                 self.conv2, self.chomp2, self.tanh2, self.dropout2)
+        self.convNet1 = nn.Sequential(
+            self.conv1,
+            self.chomp1,
+            self.tanh1,
+            self.dropout1,
+        )
+        
+        self.convNet2 = nn.Sequential(
+            self.conv2,
+            self.chomp2,
+            self.tanh2,
+            self.dropout2
+        )
         self.downsample = nn.Conv1d(n_inputs, n_outputs, 1) if n_inputs != n_outputs else None
         self.tanh = nn.Tanh()
         self.init_weights()
@@ -46,7 +58,10 @@ class TemporalBlock(nn.Module):
             self.downsample.weight.data.normal_(0, 0.01)
 
     def forward(self, x):
-        out = self.net(x)
+        out = self.convNet1(x)
+        # print('[1]. out.shape:{}'.format(out.shape))
+        # out = self.convNet2(out)
+        # print('[2]. out.shape:{}'.format(out.shape))
         res = x if self.downsample is None else self.downsample(x)
         return self.tanh(out + res)
 
