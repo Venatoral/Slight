@@ -105,7 +105,7 @@ class AttentionBlock(nn.Module):
         self.linear_keys = nn.Linear(in_channels, key_size)
         self.linear_values = nn.Linear(in_channels, value_size)
         self.sqrt_key_size = math.sqrt(key_size)
-        self.mask = torch.ByteTensor(np.array(mask)).to(device)
+        self.mask = torch.BoolTensor(np.array(mask)).to(device)
 
 
     def forward(self, inputs):        
