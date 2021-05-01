@@ -133,13 +133,13 @@ class TCNModel(TorchModelV2, nn.Module):
         self.input_size = obs_space.shape[1]
         self.output_size = num_outputs // self.num_tl
         # regulation
-        self.I4R = "MaxDivideMin"
+        self.I4R = "MaxMinusMin"
         self.reg_coef = 0.01
         self.hiddens = None
         # set TCN network
         layers = []
         
-        num_channels = [16, 32, self.output_size]
+        num_channels = [128, 96, 64, 32, 16, self.output_size]
         kernel_size = model_config['custom_model_config']['kernel_size']
         mask = model_config['custom_model_config']['adj_mask']
 

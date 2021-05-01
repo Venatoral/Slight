@@ -82,11 +82,9 @@ class MaxMinusMin(Function):
         grad_min = u[:, -1].view(-1,1).mm(v.t()[-1, :].view(1, -1))
         # calculate grad_input
         grad_input = grad_max - grad_min
-        # coef=coef.to(device)
+        coef=coef.to(device)
         grad_input=grad_input.to(device)
-        print("coef: ", coef)
         # coef
         grad_input = coef.expand_as(grad_input) * grad_input
-        print("grad_input: ", grad_input)
         # return u.mm(v.t()), None, None, None, None
         return grad_input, None, None, None, None

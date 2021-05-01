@@ -110,19 +110,20 @@ def ppo_surrogate_loss(
                                        policy.kl_coeff * action_kl -
                                        policy.entropy_coeff * curr_entropy)
     print("hiddens[0] final shape: ", model.hiddens[0].shape)
-    if model.I4R == "MaxDivideMin":
-        reguModel = MaxDivideMin.apply
-        norm = reguModel(model.hiddens[0], model.reg_coef)
-    elif model.I4R == "MaxMinusMin":
-        reguModel = MaxMinusMin.apply
-        norm = reguModel(model.hiddens[0], model.reg_coef)
+    if model.I4R!=None:
+        if model.I4R == "MaxDivideMin":
+            reguModel = MaxDivideMin.apply
+            norm = reguModel(model.hiddens[0], model.reg_coef)
+        elif model.I4R == "MaxMinusMin":
+            reguModel = MaxMinusMin.apply
+            norm = reguModel(model.hiddens[0], model.reg_coef)
+        print("*" * 50)
+        norm = norm.to(device)
+        print("norm: ", norm)
+        print("total loss:", total_loss)
+        total_loss = total_loss + norm
     else:
-        norm = 0
-    print("*" * 50)
-    norm = norm.to(device)
-    print("norm: ", norm)
-    print("total loss:", total_loss)
-    total_loss = total_loss + norm
+        total_loss=total_loss
 
     model.hiddens = None
 
