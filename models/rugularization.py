@@ -33,7 +33,7 @@ class MaxDivideMin(Function):
     @staticmethod
     def backward(ctx, grad_norm):
         input_rep, coef = ctx.saved_variables
-        coef=coef
+        coef=coef.to(device)
         u, s, v = torch.svd(input_rep, some=True)  # to handle non-square matrix
         max_sigma = s[0]
         min_sigma = s[-1] if float(s[-1]) != 0 else (s[-1] + 0.00000000000000000001)

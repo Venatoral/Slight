@@ -133,7 +133,7 @@ class TCNModel(TorchModelV2, nn.Module):
         self.input_size = obs_space.shape[1]
         self.output_size = num_outputs // self.num_tl
         # regulation
-        self.I4R = "MaxMinusMin"
+        self.I4R = "MaxDivideMin"
         self.reg_coef = 0.01
         self.hiddens = None
         # set TCN network
@@ -158,11 +158,15 @@ class TCNModel(TorchModelV2, nn.Module):
         self.net = nn.Sequential(*layers)
         # Critic
         self.ciritc = nn.Sequential(
-            nn.Linear(self.input_size * self.num_tl, 128),
+            nn.Linear(self.input_size * self.num_tl, 256),
             nn.ReLU(),
-            nn.Linear(128, 128),
+            nn.Linear(256, 128),
             nn.ReLU(),
-            nn.Linear(128, 1)
+            nn.Linear(128, 64),
+            nn.ReLU(),
+            nn.Linear(64, 32),
+            nn.ReLU(),
+            nn.Linear(32, 1)
         )
 
 

@@ -16,9 +16,9 @@ ROAD_PARAMS = dict(
     long_length=500,
     short_length=300,
     # 路网行数
-    n_rows=6,
+    n_rows=4,
     # 路网列数
-    n_columns=6,
+    n_columns=4,
     # 各个方向车辆数量
     num_cars_left=20,
     num_cars_right=20,
@@ -65,8 +65,8 @@ def get_flow_params(num_row: int, num_col: int, additional_net_params):
             edge=edges[i],
             depart_lane='free',
             depart_speed=20,
-            vehs_per_hour=800,
-            # probability=0.2,
+            # vehs_per_hour=800,
+            probability=0.15,
         )
     initial = InitialConfig(
         shuffle=True,
@@ -120,8 +120,8 @@ init, net_params = get_flow_params(num_row=ROAD_PARAMS['n_rows'],
 # 训练环境参数
 additional_env_params = {
         'target_velocity': 35,
-        'switch_time': 3.0,
-        'num_observed': 10,
+        'switch_time': 0.0,
+        'num_observed': 6,
         # 使用离散值来表示action_space
         'discrete': False,
         'tl_type': 'controlled',
@@ -140,7 +140,7 @@ flow_params = dict(
     sim=SumoParams(
         sim_step=1.0,
         render=False,
-        emission_path='data',
+        # emission_path='data',
         restart_instance=True,
         print_warnings=False
     ),

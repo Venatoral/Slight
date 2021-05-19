@@ -57,9 +57,8 @@ import numpy as np
 # plt.savefig('./heatmap.png')
 
 #convergency curve2
-df=pd.read_csv("./reward_all.csv")
 
-dirName = glob.glob(r'./pic/result_no_att.json')
+dirName = glob.glob(r'/home/male/Desktop/nigger/results/Desired/PPOPlus_SeqTrafficLightEnv-v0_6e526_00000_0_2021-05-07_22-13-43/result.json')
 name = dirName[0]
 jsonContext = []
 for line in open(name, 'r'):
@@ -69,18 +68,11 @@ reward_mean_no_att=[]
 
 for i in jsonContext:
     reward_mean_no_att.append(i['episode_reward_mean'])
-reward_mean_no_att=reward_mean_no_att[0:249]
-df["NoAtt"]=reward_mean_no_att
-
-df.to_csv("./reward_all.csv")
-plt.plot(df["Base"], label="Ours")
-plt.plot(df["DRL"], label="DRL")
-plt.plot(df['NoAtt'], label="No-Attention")
+plt.plot(reward_mean_no_att)
 plt.xlabel('trial')
 plt.ylabel('rewards')
 
-plt.legend()
-plt.savefig('convergency_curve.png')
+plt.savefig('Niggerconvergency_curve.png')
 
 
 

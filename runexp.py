@@ -68,7 +68,7 @@ def train():
         name='Desired',
         local_dir='./results', 
         config=config,
-        stop={"training_iteration": 1},
+        stop={"training_iteration": 1000},
         resume=False,
         checkpoint_at_end=True,
         checkpoint_freq=5,
@@ -95,29 +95,34 @@ def test(checkpoint_path: str, num_epochs=1):
     ModelCatalog.register_custom_model(
         "attnModel", AttentionSeqModel,
     )
+    ModelCatalog.register_custom_model(
+        "tcnModel", TCNModel,
+    )
     # generate adj matrix
     adj_matrix = env.get_adj_matrix()
     config = {
         "env": gym_name,
         "env_config": {
-            "repeat_delay": 2,
+            "repeat_delay": 1,
         },
         "gamma": 0.99,
         "entropy_coeff": 1e-3,
         'vf_clip_param': 20.0,
         "num_sgd_iter": 10,
         "vf_loss_coeff": 1e-5,
-        'num_gpus': 0,
+        'num_gpus': gpu_num,
         "model": {
-            "custom_model": "attnModel",
+            "custom_model": "tcnModel",
             "custom_model_config": {
-                'adj_mask': adj_matrix
+                'adj_mask':adj_matrix,
+                'kernel_size': 3
             }
         },
         "framework": "torch",
     }
 
-    agent = PPOTrainer(config)
+    policy = OurPolicy
+    agent = build_trainer(name='PPOPlus', default_config=DEFAULT_CONFIG, default_policy=policy)(config)
     agent.restore(checkpoint_path)
     # queue_len
     epoch_queue_len = []
@@ -145,7 +150,7 @@ def test(checkpoint_path: str, num_epochs=1):
 
             delay_time.append(rewards.min_delay_unscaled(env))
             aver_speed.append(rewards.average_velocity(env))
-            queue_len.append(rewards.queue_length(env))
+            queue_len.append(0)
             epi_rewards += reward
 
             if done:
@@ -175,5 +180,5 @@ def test(checkpoint_path: str, num_epochs=1):
 
 
 if __name__ == "__main__":
-    train()
-   # test('/home/male/Desktop/Slight-dev/results/PPO/PPO_SeqTrafficLightEnv-v0_d606b_00000_0_2021-04-07_17-58-43/checkpoint_300/checkpoint-300')
+    # train()
+    test('/home/male/Desktop/nigger/results/Desired/PPOPlus_SeqTrafficLightEnv-v0_6e526_00000_0_2021-05-07_22-13-43/checkpoint_145/checkpoint-145')

@@ -18,8 +18,7 @@ class SeqTrafficLightEnv(TrafficLightGridPOEnv):
         # number of nearest edges to observe, defaults to 4
         self.num_local_edges = env_params.additional_params.get(
             "num_local_edges", 4)
-    
-    
+
     @property
     def observation_space(self):
         """State space that is partially observed.
@@ -89,8 +88,8 @@ class SeqTrafficLightEnv(TrafficLightGridPOEnv):
                     veh_id)) / max_dist for veh_id in observed_ids])
                 local_edge_numbers.extend([self._convert_edge(
                     self.k.vehicle.get_edge(veh_id)) / (
-                    self.k.network.network.num_edges - 1) for veh_id in
-                    observed_ids])
+                                                   self.k.network.network.num_edges - 1) for veh_id in
+                                           observed_ids])
 
                 if len(observed_ids) < self.num_observed:
                     diff = self.num_observed - len(observed_ids)
@@ -176,42 +175,25 @@ class SeqTrafficLightEnv(TrafficLightGridPOEnv):
 
     def compute_reward(self, rl_actions, **kwargs):
         """See class definition."""
-        # Male Implemented
-        # max or mean
-        def max_queue_length(env):
-            # now add in the density and average velocity on the edges
-            density = []
-            for edge in env.k.network.get_edge_list():
-                ids = env.k.vehicle.get_ids_by_edge(edge)
-                if len(ids) > 0:
-                    vehicle_length = 5
-                    # density += [vehicle_length * len(ids)]
-                    density += [vehicle_length * len(ids) / env.k.network.edge_length(edge)]
-                else:
-                    density += [0]
-            return np.max(density)
-
-
-        def queue_length(env):
-            # now add in the density and average velocity on the edges
-            density = []
-            for edge in env.k.network.get_edge_list():
-                ids = env.k.vehicle.get_ids_by_edge(edge)
-                if len(ids) > 0:
-                    vehicle_length = 5
-                    # density += [vehicle_length * len(ids)]
-                    density += [vehicle_length * len(ids) / env.k.network.edge_length(edge)]
-                else:
-                    density += [0]
-            return np.mean(density)
-
         if self.env_params.evaluate:
             return - rewards.min_delay_unscaled(self)
         else:
-            # penalize_near_standstill ??
-            # max_speed = max([self.k.vehicle.get_speed(id) for id in self.k.vehicle.get_ids()])
-            # r = rewards.average_velocity(self) - rewards.min_delay_unscaled(self) - max_queue_length(self) \
-            #     + rewards.penalize_near_standstill(self, gain=0.15)
-            return (- rewards.min_delay_unscaled(self) +
-                    rewards.penalize_standstill(self, gain=0.2))
-            # return r
+            density = 0
+            density_alpha = 0.2
+            k = 1
+            # self.network.node_mapping: Get edges around Intersection
+            for _, edges in self.network.node_mapping:
+                ri = 0
+                # edges is [bot, right, top, left]
+                south_ids = self.k.vehicle.get_ids_by_edge(edges[0])
+                north_ids = self.k.vehicle.get_ids_by_edge(edges[2])
+                west_ids = self.k.vehicle.get_ids_by_edge(edges[3])
+                east_ids = self.k.vehicle.get_ids_by_edge(edges[1])
+
+                ri = (
+                        max(len(south_ids), len(north_ids)) ** k +
+                        max(len(west_ids), len(east_ids)) ** k
+                )
+                density += density_alpha * ri
+
+            return -density + rewards.penalize_standstill(self, gain=0.2)
