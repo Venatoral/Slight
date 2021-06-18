@@ -1,0 +1,7 @@
+data
+*.exe
+*.tmp
+.vscode
+.idea
+__pycache__
+results/**
