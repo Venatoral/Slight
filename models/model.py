@@ -85,8 +85,15 @@ class AttentionSeqModel(TorchModelV2, nn.Module):
             obs_space, action_space, num_outputs, model_config, name)
         nn.Module.__init__(self)
         # the adj matrix for attention usage
+        self.attention_mask = torch.from_numpy(model_config['custom_model_config']['adj_mask']).float()
+        '''
+         >>> 验证Seq顺序影响，交换obs中某两路口位置
+        '''
+        for i in range(6):
+            self.attention_mask[i], self.attention_mask[self.attention_mask.shape[0] - 1 - i] = \
+                self.attention_mask[self.attention_mask.shape[0] - 1 - i], self.attention_mask[i]
         self.attention_mask = torch.nn.Parameter(
-            torch.from_numpy(model_config['custom_model_config']['adj_mask']).float(),
+            data=self.attention_mask,
             requires_grad=True,
         )
         # dimensions
@@ -131,7 +138,8 @@ class AttentionSeqModel(TorchModelV2, nn.Module):
          >>> 验证Seq顺序影响，交换obs中某两路口位置
         '''
         for i in range(obs.shape[0]):
-            obs[i][14], obs[i][26] = obs[i][26], obs[i][14]
+            for j in range(6):
+                obs[i][j], obs[i][obs.shape[1] - 1 - j] = obs[i][obs.shape[1]  - 1 - j], obs[i][j]
         # encoder
         # hidden: (num_layers * num_directions, batch, hidden_size)
         encoder_outputs = torch.zeros(
@@ -163,7 +171,8 @@ class AttentionSeqModel(TorchModelV2, nn.Module):
          >>> 验证Seq顺序影响，交换obs中某两路口位置，因此需要换回outs对应动作位置
         '''
         for i in range(outs.shape[0]):
-            outs[i][14], outs[i][26] = outs[i][26], outs[i][14]
+            for j in range(6):
+                outs[i][j], outs[i][outs.shape[1] - 1 - j] = outs[i][outs.shape[1] - j - 1], outs[i][j]
         # draw matrix
         # if (self.time_step + 1) % 500 == 0:
         #     print('Save Attns!')
