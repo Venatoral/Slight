@@ -120,7 +120,7 @@ init, net_params = get_flow_params(num_row=ROAD_PARAMS['n_rows'],
 # 训练环境参数
 additional_env_params = {
         'target_velocity': 50,
-        'switch_time': 0,
+        'switch_time': 3.0,
         'num_observed': 4,
         # 使用离散值来表示action_space
         'discrete': False,
